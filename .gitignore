@@ -37,3 +37,9 @@ venv/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
+
+# Turborepo
+.turbo/
+
+# TypeScript incremental build cache
+*.tsbuildinfo

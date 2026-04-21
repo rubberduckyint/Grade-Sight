@@ -1,0 +1,18 @@
+# Build artifacts
+.next
+dist
+build
+coverage
+
+# Deps
+node_modules
+
+# Python (handled by ruff)
+apps/api
+
+# Generated
+pnpm-lock.yaml
+uv.lock
+
+# Turbo
+.turbo
