@@ -1,0 +1,23 @@
+{
+  "name": "@grade-sight/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint for shared (no runtime code)' && exit 0",
+    "format": "prettier --write src",
+    "test": "echo 'no tests yet' && exit 0"
+  }
+}
