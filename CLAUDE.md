@@ -10,7 +10,7 @@ Grade-Sight is a diagnostic grading platform for secondary math (Algebra → Pre
 
 ## 2. Tech stack (fixed)
 
-- **Frontend:** Next.js 14+ (App Router) + Tailwind 4 + shadcn/ui, TypeScript strict
+- **Frontend:** Next.js 16 (App Router) + Tailwind 4 + shadcn/ui, TypeScript strict
 - **Backend:** Python FastAPI, mypy strict
 - **Database:** Postgres (Supabase or Railway-managed)
 - **Auth:** Clerk (with organizations)
