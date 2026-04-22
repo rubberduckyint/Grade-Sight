@@ -10,21 +10,38 @@ app in `apps/` is a separate Railway service.
 | `web` | `apps/web` | `/` | `$PORT` |
 | `api` | `apps/api` | `/api/health` | `$PORT` |
 
-Each service reads its build + deploy config from `apps/<name>/railway.json`.
+Each service's build + deploy config is set **in the Railway UI** (Settings →
+Build + Deploy). The `apps/<name>/railway.json` files duplicate that config for
+local reference, but Railway treats the UI settings as authoritative. If you
+change a command, change it in both places to keep them in sync.
+
+Railway's default builder is **Railpack**. Leave it as the default; Nixpacks is
+deprecated.
 
 ## Setting up Railway (manual, first time)
 
 1. Create a Railway project for Grade-Sight.
-2. Add a service called `web`, connect this GitHub repo, set **Root Directory**
-   to `apps/web`. Railway picks up `apps/web/railway.json` automatically.
-3. Add a service called `api`, same repo, set **Root Directory** to `apps/api`.
-4. For both services, set **Region** to a US region (e.g. `us-west`). This is a
-   UI-only setting at the time of writing — not expressible in `railway.json`.
-5. Configure environment variables in each service's **Variables** tab. See
+2. Add a service called `web`: connect this GitHub repo, set **Root Directory**
+   to `apps/web`.
+3. Add a service called `api`: same repo, **Root Directory** = `apps/api`.
+4. For both services, set **Region** to a US region (e.g. `us-west`). UI-only.
+5. In each service's **Settings → Build + Deploy**, set:
+
+   **`web` service:**
+   - Build Command: `pnpm install --frozen-lockfile && pnpm --filter web... build`
+   - Start Command: `pnpm --filter web start`
+   - Healthcheck Path: `/`
+
+   **`api` service:**
+   - Build Command: `uv sync --locked`
+   - Start Command: `uv run uvicorn grade_sight_api.main:app --host 0.0.0.0 --port $PORT`
+   - Healthcheck Path: `/api/health`
+
+6. Configure environment variables in each service's **Variables** tab. See
    `apps/web/.env.example` and `apps/api/.env.example` for the required keys
    (Spec 1 requires only `NEXT_PUBLIC_API_URL` on web; `API_PORT`, `CORS_ORIGIN`,
    `LOG_LEVEL`, `ENVIRONMENT` on api).
-6. On the web service, set `NEXT_PUBLIC_API_URL` to the api service's public
+7. On the web service, set `NEXT_PUBLIC_API_URL` to the api service's public
    URL (Railway shows it once the service has deployed once).
 
 ## Adding Postgres (Spec 2, not yet)
