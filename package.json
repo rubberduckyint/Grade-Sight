@@ -8,7 +8,7 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "install:py": "uv sync --project apps/api",
+    "install:py": "if command -v uv >/dev/null 2>&1; then uv sync --project apps/api; else echo '[install:py] uv not found on PATH — skipping apps/api sync (install uv or add to PATH for local Python dev)'; fi",
     "postinstall": "pnpm install:py",
     "dev": "concurrently -n web,api -c blue,green \"pnpm --filter web dev\" \"pnpm --filter api dev\"",
     "build": "turbo run build",
