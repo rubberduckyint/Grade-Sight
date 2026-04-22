@@ -8,7 +8,7 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "install:py": "/Users/exexporerporer/.local/bin/uv sync --project apps/api",
+    "install:py": "uv sync --project apps/api",
     "postinstall": "pnpm install:py",
     "dev": "concurrently -n web,api -c blue,green \"pnpm --filter web dev\" \"pnpm --filter api dev\"",
     "build": "turbo run build",
