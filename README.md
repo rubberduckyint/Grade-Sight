@@ -26,6 +26,7 @@ docs/         Product brief, design specs, implementation plans
 - **pnpm** 9+ (`pnpm --version`). Install via `npm install -g pnpm@9`.
 - **Python** 3.12+ (`python3.12 --version`)
 - **uv** 0.5+ (`uv --version`). Install via `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+- **Docker** (for local Postgres). Docker Desktop or Docker Engine + Compose v2.
 
 Ensure `uv` is on your shell PATH. The uv installer typically adds a line to
 your shell config; if `which uv` fails after install, add
@@ -50,6 +51,45 @@ Starts both apps in one terminal:
 
 - `apps/web` on <http://localhost:3000>
 - `apps/api` on <http://localhost:8000> (health: <http://localhost:8000/api/health>)
+
+## Local Postgres
+
+Bring up Postgres 16 in the background:
+
+```bash
+docker compose up -d db
+```
+
+Apply migrations:
+
+```bash
+pnpm db:migrate
+```
+
+Stop:
+
+```bash
+docker compose down
+```
+
+To wipe the local DB (reset to clean state):
+
+```bash
+docker compose down -v
+```
+
+## Migrations
+
+```bash
+pnpm db:migrate              # alembic upgrade head
+pnpm db:makemigration -- "your message"   # autogenerate a new migration
+pnpm db:rollback             # alembic downgrade -1
+```
+
+**Production migrations** are currently manual. To apply a new migration to
+Railway's Postgres, set `DATABASE_URL` locally to Railway's
+`DATABASE_PUBLIC_URL` and run `pnpm db:migrate`. See `infra/README.md`
+for how to find the public URL.
 
 ## Other commands
 
