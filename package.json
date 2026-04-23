@@ -15,7 +15,10 @@
     "lint": "turbo run lint",
     "format": "turbo run format",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter api db:migrate",
+    "db:makemigration": "pnpm --filter api db:makemigration",
+    "db:rollback": "pnpm --filter api db:rollback"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

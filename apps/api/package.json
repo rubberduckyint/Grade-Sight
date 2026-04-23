@@ -9,6 +9,9 @@
     "lint": "uv run ruff check",
     "format": "uv run ruff format",
     "typecheck": "uv run mypy src",
-    "test": "sh -c 'uv run pytest; ec=$?; [ $ec -eq 5 ] && exit 0 || exit $ec'"
+    "test": "sh -c 'uv run pytest; ec=$?; [ $ec -eq 5 ] && exit 0 || exit $ec'",
+    "db:migrate": "uv run alembic upgrade head",
+    "db:makemigration": "uv run alembic revision --autogenerate -m",
+    "db:rollback": "uv run alembic downgrade -1"
   }
 }
