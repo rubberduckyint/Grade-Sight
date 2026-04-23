@@ -16,7 +16,7 @@ from ..db.base import Base
 from ..db.mixins import SoftDeleteMixin, TenantMixin, TimestampMixin
 
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     parent = "parent"
     teacher = "teacher"
     admin = "admin"

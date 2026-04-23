@@ -18,7 +18,7 @@ from ..db.base import Base
 from ..db.mixins import SoftDeleteMixin, TenantMixin, TimestampMixin
 
 
-class AssessmentStatus(str, enum.Enum):
+class AssessmentStatus(enum.StrEnum):
     pending = "pending"
     processing = "processing"
     completed = "completed"
