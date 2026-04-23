@@ -6,7 +6,7 @@ This file is auto-loaded at the start of every Claude Code session. It captures 
 
 Grade-Sight is a diagnostic grading platform for secondary math (Algebra → Pre-Calc, CA Common Core). Core differentiator: identifies *why* students lose points via a four-category error taxonomy (conceptual, execution, verification, confidence/strategy), with longitudinal tracking per student. Dual GTM from MVP: parent mode (primary early traction) and individual teacher mode (bottoms-up SaaS wedge). District sales deferred to Phase 3.
 
-**Current phase:** Phase 1 MVP — Spec 1 (monorepo scaffolding) complete. Next: Spec 2 (Postgres schema + migrations).
+**Current phase:** Phase 1 MVP — Specs 1 (scaffolding) and 2 (DB schema + migrations) complete. Next: Spec 3 (Clerk auth integration).
 
 ## 2. Tech stack (fixed)
 
