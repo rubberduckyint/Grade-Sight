@@ -16,8 +16,22 @@ from sqlalchemy.ext.asyncio import (
 
 from ..config import settings
 
+
+def asyncpg_url(url: str) -> str:
+    """Normalize a Postgres URL to use the asyncpg driver.
+
+    Railway's ${{Postgres.DATABASE_URL}} variable reference resolves to a
+    plain `postgresql://...` URL; SQLAlchemy's create_async_engine requires
+    the `+asyncpg` driver suffix. Idempotent — leaves already-prefixed URLs
+    (and non-postgres URLs, which shouldn't happen) untouched.
+    """
+    if "+asyncpg" in url:
+        return url
+    return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+
 engine: AsyncEngine = create_async_engine(
-    str(settings.database_url),
+    asyncpg_url(str(settings.database_url)),
     pool_pre_ping=True,
     future=True,
 )

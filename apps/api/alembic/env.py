@@ -14,14 +14,16 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from grade_sight_api import models  # noqa: F401 — side effect: registers all models
 from grade_sight_api.config import settings
 from grade_sight_api.db.base import Base
-from grade_sight_api import models  # noqa: F401 — side effect: registers all models
+from grade_sight_api.db.session import asyncpg_url
 
 config = context.config
 
 # Inject DATABASE_URL from settings into Alembic config.
-config.set_main_option("sqlalchemy.url", str(settings.database_url))
+# Normalize to the asyncpg driver so Railway's bare postgresql:// URLs work.
+config.set_main_option("sqlalchemy.url", asyncpg_url(str(settings.database_url)))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
