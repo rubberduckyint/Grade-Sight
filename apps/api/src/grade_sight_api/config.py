@@ -1,5 +1,6 @@
 """Typed settings loaded from environment variables."""
 
+from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,5 +19,8 @@ class Settings(BaseSettings):
     log_level: str = "info"
     environment: str = "development"
 
+    database_url: PostgresDsn
+    test_database_url: PostgresDsn | None = None
 
-settings = Settings()
+
+settings = Settings()  # type: ignore[call-arg]
