@@ -13,6 +13,8 @@ from .llm_call_log import LLMCallLog
 from .organization import Organization
 from .student import Student
 from .student_profile import StudentProfile
+from .subscription import Plan, Subscription, SubscriptionStatus
+from .subscription_event import SubscriptionEvent
 from .user import User, UserRole
 
 __all__ = [
@@ -24,8 +26,12 @@ __all__ = [
     "Klass",
     "LLMCallLog",
     "Organization",
+    "Plan",
     "Student",
     "StudentProfile",
+    "Subscription",
+    "SubscriptionEvent",
+    "SubscriptionStatus",
     "User",
     "UserRole",
 ]
