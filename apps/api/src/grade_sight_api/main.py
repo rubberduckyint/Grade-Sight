@@ -12,7 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
 from .db import engine, get_session
+from .routers import billing as billing_router
 from .routers import me as me_router
+from .routers.webhooks import stripe as stripe_webhook_router
 
 
 @asynccontextmanager
@@ -27,6 +29,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Grade-Sight API", version="0.0.0", lifespan=lifespan)
 
 app.include_router(me_router.router)
+app.include_router(billing_router.router)
+app.include_router(stripe_webhook_router.router)
 
 
 @app.get("/api/health")
