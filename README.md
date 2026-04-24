@@ -113,6 +113,39 @@ cp apps/api/.env.example apps/api/.env
 
 `.env` and `.env.local` are gitignored; never commit secrets.
 
+## Clerk authentication (local dev)
+
+Grade-Sight uses [Clerk](https://clerk.com) for authentication. To test sign-up
+flows locally:
+
+1. Sign up at https://clerk.com and create a new application. Pick "Email +
+   Password" (and any OAuth providers you want) as the sign-in methods.
+2. In the Clerk dashboard, enable the **Organizations** feature for the
+   application. Teacher sign-ups auto-create orgs on first request.
+3. Copy the **Development instance** keys:
+   - `Publishable Key` (starts with `pk_test_`)
+   - `Secret Key` (starts with `sk_test_`)
+4. Paste them into both local env files (both files are gitignored):
+
+```bash
+# apps/web/.env.local
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+# apps/api/.env
+CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+```
+
+5. Restart `pnpm dev` so the new env vars load.
+6. Visit http://localhost:3000 and click either "Sign up as parent" or "Sign
+   up as teacher". Clerk's sign-up flow runs. On completion you land on
+   `/dashboard` showing "Logged in as {name} ({role})".
+
+Production Clerk instance (required before deploying to Railway with real
+users) uses `pk_live_` / `sk_live_` keys and requires a verified domain.
+Set those in Railway's Variables tab per service.
+
 ## Deployment
 
 See `infra/README.md` for Railway setup. Two services (`web`, `api`), US region,
