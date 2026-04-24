@@ -3,20 +3,13 @@
 import { useState, useTransition } from "react";
 
 export interface TrialBannerProps {
-  trialEndsAt: string; // ISO 8601
+  daysRemaining: number;
   onCheckout: () => Promise<string>;
 }
 
-export function TrialBanner({ trialEndsAt, onCheckout }: TrialBannerProps) {
+export function TrialBanner({ daysRemaining, onCheckout }: TrialBannerProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  const daysRemaining = Math.max(
-    0,
-    Math.ceil(
-      (new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-    ),
-  );
 
   const handleClick = () => {
     setError(null);
