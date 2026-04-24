@@ -25,5 +25,10 @@ class Settings(BaseSettings):
     clerk_secret_key: str
     clerk_publishable_key: str
 
+    stripe_secret_key: str
+    stripe_webhook_secret: str
+    stripe_price_parent_monthly: str
+    stripe_price_teacher_monthly: str
+
 
 settings = Settings()  # type: ignore[call-arg]
