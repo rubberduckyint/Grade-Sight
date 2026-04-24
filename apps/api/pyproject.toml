@@ -56,6 +56,7 @@ select = [
 "src/grade_sight_api/main.py" = ["B008"]
 "src/grade_sight_api/auth/dependencies.py" = ["B008"]
 "src/grade_sight_api/routers/me.py" = ["B008"]
+"src/grade_sight_api/routers/billing.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.12"
