@@ -15,3 +15,7 @@ class Organization(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(nullable=False)
+    clerk_org_id: Mapped[str | None] = mapped_column(
+        unique=True,
+        nullable=True,
+    )
