@@ -28,14 +28,7 @@ export default async function DashboardPage() {
           </p>
         )}
       </div>
-      <SignOutButton>
-        <button
-          type="button"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
-        >
-          Sign out
-        </button>
-      </SignOutButton>
+      <SignOutButton />
     </main>
   );
 }
