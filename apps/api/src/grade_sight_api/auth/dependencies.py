@@ -3,7 +3,9 @@
 get_current_user:
   - Verifies the Clerk session token from request headers.
   - Lazily upserts the user row in our DB on first authenticated request.
-  - For teacher role on first request: auto-creates a Clerk org + our row.
+  - For BOTH parent and teacher roles on first request: auto-creates a Clerk
+    org + our organizations row + Stripe customer + trialing subscriptions
+    row + denormalizes organizations.subscription_status.
   - Returns the live User ORM instance.
 
 Role security: unsafeMetadata.role is user-controllable. We accept only
@@ -13,15 +15,19 @@ Role security: unsafeMetadata.role is user-controllable. We accept only
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from clerk_backend_api.models.createorganizationop import CreateOrganizationRequestBody
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
 from ..models.organization import Organization
+from ..models.subscription import Plan, Subscription, SubscriptionStatus
 from ..models.user import User, UserRole
+from ..services import stripe_service
 from .clerk import clerk_client, verify_request_auth
 
 logger = logging.getLogger(__name__)
@@ -30,9 +36,8 @@ logger = logging.getLogger(__name__)
 def _normalize_role(raw: object) -> UserRole:
     """Coerce a Clerk metadata role value into a safe UserRole.
 
-    Anything that isn't exactly 'teacher' or 'parent' becomes 'parent'.
-    Admin role is NOT self-service assignable — must be set by a direct
-    DB edit.
+    Anything that isn't 'teacher' or 'parent' becomes 'parent'. Admin role is
+    NOT self-service assignable — must be set by a direct DB edit.
     """
     if isinstance(raw, str) and raw == "teacher":
         return UserRole.teacher
@@ -46,22 +51,34 @@ def _normalize_role(raw: object) -> UserRole:
 
 
 def _default_org_name(
-    first_name: str | None, last_name: str | None, email: str
+    role: UserRole,
+    first_name: str | None,
+    last_name: str | None,
+    email: str,
 ) -> str:
-    """Build the default auto-created org name for a teacher signup."""
+    """Build the default auto-created org name.
+
+    Parent: '{First Last}'s Family'
+    Teacher: '{First Last}'s Classroom'
+    Fallback: '{email-local}'s {Family|Classroom}' when names missing.
+    """
+    suffix = "Classroom" if role == UserRole.teacher else "Family"
     parts = [p for p in (first_name, last_name) if p]
     if parts:
-        return f"{' '.join(parts)}'s Classroom"
+        return f"{' '.join(parts)}'s {suffix}"
     local = email.split("@")[0] if "@" in email else email
-    return f"{local}'s Classroom"
+    return f"{local}'s {suffix}"
+
+
+def _plan_for_role(role: UserRole) -> Plan:
+    """Map a user role to their default subscription plan."""
+    if role == UserRole.teacher:
+        return Plan.teacher_monthly
+    return Plan.parent_monthly
 
 
 def _extract_primary_email(clerk_user: Any) -> str:
-    """Return the primary email address string from a Clerk user object.
-
-    Clerk user objects carry email addresses as a list with one entry
-    marked as primary via primary_email_address_id. SDK v5 uses snake_case.
-    """
+    """Return the primary email address string from a Clerk user object."""
     primary_id = getattr(clerk_user, "primary_email_address_id", None) or getattr(
         clerk_user, "primaryEmailAddressId", None
     )
@@ -78,7 +95,6 @@ def _extract_primary_email(clerk_user: Any) -> str:
             )
             if value:
                 return str(value)
-    # Fallback: use the first email address if no primary match
     if addresses:
         first = addresses[0]
         value = getattr(first, "email_address", None) or getattr(
@@ -90,7 +106,6 @@ def _extract_primary_email(clerk_user: Any) -> str:
 
 
 def _extract_unsafe_metadata(clerk_user: Any) -> dict[str, Any]:
-    """Return unsafe_metadata as a dict, handling snake_case / camelCase."""
     meta = getattr(clerk_user, "unsafe_metadata", None)
     if meta is None:
         meta = getattr(clerk_user, "unsafeMetadata", None)
@@ -103,10 +118,7 @@ async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_session),
 ) -> User:
-    """Verify Clerk session and return (or lazily create) the matching User row.
-
-    Raises 401 on unauthenticated or invalid tokens.
-    """
+    """Verify Clerk session and return (or lazily create) the matching User row."""
     headers = dict(request.headers)
     clerk_user_id = verify_request_auth(headers)
     if clerk_user_id is None:
@@ -123,16 +135,13 @@ async def get_current_user(
     )
     existing = result.scalar_one_or_none()
 
-    # Fetch Clerk user data for create OR for drift-update.
-    # SDK v5: users.get(user_id=...) — keyword-only param confirmed via inspect.
     clerk_user = clerk_client.users.get(user_id=clerk_user_id)
 
     email = _extract_primary_email(clerk_user)
-    # SDK v5 User model uses snake_case fields confirmed via model_fields inspection.
-    first_name: str | None = getattr(clerk_user, "first_name", None) or getattr(
+    first_name = getattr(clerk_user, "first_name", None) or getattr(
         clerk_user, "firstName", None
     )
-    last_name: str | None = getattr(clerk_user, "last_name", None) or getattr(
+    last_name = getattr(clerk_user, "last_name", None) or getattr(
         clerk_user, "lastName", None
     )
 
@@ -151,41 +160,68 @@ async def get_current_user(
             await db.flush()
         return existing
 
+    # ─── New user: create Clerk org + DB org + Stripe customer + trial sub + user row ───
+
     unsafe_meta = _extract_unsafe_metadata(clerk_user)
     role = _normalize_role(unsafe_meta.get("role"))
+    org_name = _default_org_name(role, first_name, last_name, email)
+    plan = _plan_for_role(role)
 
-    organization_id = None
-    if role == UserRole.teacher:
-        org_name = _default_org_name(first_name, last_name, email)
-        # SDK v5: organizations.create takes a `request` param wrapping
-        # a CreateOrganizationRequestBody (confirmed via inspect.signature).
-        from clerk_backend_api.models.createorganizationop import (
-            CreateOrganizationRequestBody,
-        )
+    # 1. Create Clerk org (for both parent and teacher now)
+    clerk_org = clerk_client.organizations.create(
+        request=CreateOrganizationRequestBody(name=org_name, created_by=clerk_user_id)
+    )
+    clerk_org_id = getattr(clerk_org, "id", None)
 
-        clerk_org = clerk_client.organizations.create(
-            request=CreateOrganizationRequestBody(
-                name=org_name,
-                created_by=clerk_user_id,
-            )
-        )
-        clerk_org_id = getattr(clerk_org, "id", None)
-        new_org = Organization(
-            name=org_name,
-            clerk_org_id=str(clerk_org_id) if clerk_org_id else None,
-        )
-        db.add(new_org)
-        await db.flush()  # populate new_org.id
-        organization_id = new_org.id
+    # 2. Insert our organizations row
+    new_org = Organization(
+        name=org_name,
+        clerk_org_id=str(clerk_org_id) if clerk_org_id else None,
+    )
+    db.add(new_org)
+    await db.flush()
 
+    # 3. Create Stripe customer via service layer (writes audit log)
+    stripe_customer = await stripe_service.create_customer(
+        email=email,
+        organization_id=new_org.id,
+        db=db,
+    )
+
+    # 4. Insert subscription row: trialing, 30-day trial, no stripe_subscription_id yet
+    trial_ends_at = datetime.now(UTC) + timedelta(days=30)
+    new_sub = Subscription(
+        organization_id=new_org.id,
+        stripe_customer_id=stripe_customer.id,
+        stripe_subscription_id=None,
+        plan=plan,
+        status=SubscriptionStatus.trialing,
+        trial_ends_at=trial_ends_at,
+        current_period_end=None,
+        cancel_at_period_end=False,
+    )
+    db.add(new_sub)
+
+    # 5. Denormalize subscription status onto organization
+    new_org.subscription_status = SubscriptionStatus.trialing
+
+    # 6. Insert users row
     new_user = User(
         clerk_id=clerk_user_id,
         email=email,
         role=role,
         first_name=first_name,
         last_name=last_name,
-        organization_id=organization_id,
+        organization_id=new_org.id,
     )
     db.add(new_user)
     await db.flush()
+
+    logger.info(
+        "Lazy upsert created org=%s user=%s role=%s plan=%s",
+        new_org.id,
+        new_user.id,
+        role.value,
+        plan.value,
+    )
     return new_user
