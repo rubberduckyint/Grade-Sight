@@ -146,6 +146,59 @@ Production Clerk instance (required before deploying to Railway with real
 users) uses `pk_live_` / `sk_live_` keys and requires a verified domain.
 Set those in Railway's Variables tab per service.
 
+## Stripe billing (local dev)
+
+Grade-Sight uses Stripe for subscription billing. To test the billing flow
+locally:
+
+1. Sign up at https://stripe.com and create a new account.
+2. In the Stripe dashboard (Test mode), create two Products:
+   - **Parent Plan** with a recurring **$15/month** price
+   - **Teacher Plan** with a recurring **$25/month** price
+3. Record the **price IDs** (e.g. `price_1Nxxxxx`) from each product.
+4. Grab your Stripe keys (Developers → API Keys):
+   - Publishable Key (`pk_test_...`)
+   - Secret Key (`sk_test_...`)
+5. Install Stripe CLI: `brew install stripe/stripe-cli/stripe` then `stripe login`.
+6. In one terminal, forward webhooks to your local api:
+
+```bash
+stripe listen --forward-to localhost:8000/api/webhooks/stripe
+```
+
+   Stripe CLI prints a webhook signing secret (`whsec_...`); use it as
+   `STRIPE_WEBHOOK_SECRET` locally.
+
+7. Fill in `apps/api/.env`:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_PARENT_MONTHLY=price_...
+STRIPE_PRICE_TEACHER_MONTHLY=price_...
+```
+
+8. Fill in `apps/web/.env.local`:
+
+```bash
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+9. Restart `pnpm dev`.
+10. Sign up (parent or teacher) via the normal Clerk flow. On first
+    authenticated request, a Stripe customer and trialing subscription
+    row are auto-created. Check Stripe Dashboard → Customers to verify.
+11. To test adding a card: click "Add card" on the dashboard trial banner
+    OR go to `/settings/billing` → "Manage billing". Use Stripe test
+    cards:
+    - Success: `4242 4242 4242 4242`
+    - Decline: `4000 0000 0000 0002`
+    - Insufficient funds: `4000 0000 0000 9995`
+
+For production deploy: create a Live-mode Stripe instance, register the
+webhook endpoint (`https://<api-url>/api/webhooks/stripe`), and swap
+Railway's Stripe env vars to `pk_live_...` / `sk_live_...`.
+
 ## Deployment
 
 See `infra/README.md` for Railway setup. Two services (`web`, `api`), US region,
