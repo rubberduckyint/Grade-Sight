@@ -22,5 +22,8 @@ class Settings(BaseSettings):
     database_url: PostgresDsn
     test_database_url: PostgresDsn | None = None
 
+    clerk_secret_key: str
+    clerk_publishable_key: str
+
 
 settings = Settings()  # type: ignore[call-arg]
