@@ -1,4 +1,6 @@
 """External service abstraction layer.
 
-Empty in Spec 1. Populated in Spec 4 with Claude, S3, and audit-log wiring.
+Wraps third-party APIs (Stripe today; Claude + S3 in future specs) so
+the surrounding code calls thin, audit-logged helpers rather than the
+raw SDKs.
 """
