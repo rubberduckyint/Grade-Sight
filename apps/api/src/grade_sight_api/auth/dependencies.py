@@ -20,7 +20,7 @@ from typing import Any
 
 from clerk_backend_api.models.createorganizationop import CreateOrganizationRequestBody
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
@@ -161,6 +161,25 @@ async def get_current_user(
         return existing
 
     # ─── New user: create Clerk org + DB org + Stripe customer + trial sub + user row ───
+
+    # Serialize concurrent first-request upserts for the same Clerk user. Without
+    # this, parallel requests (e.g. Promise.all on the dashboard) each enter this
+    # branch and leak duplicate Clerk orgs + Stripe customers before the users
+    # INSERT fails on uq_users_clerk_id. The xact-scoped lock auto-releases on
+    # commit/rollback; re-query after acquiring to detect the benign lost-race.
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:key))"),
+        {"key": f"lazy_upsert:{clerk_user_id}"},
+    )
+    result = await db.execute(
+        select(User).where(
+            User.clerk_id == clerk_user_id,
+            User.deleted_at.is_(None),
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        return existing
 
     unsafe_meta = _extract_unsafe_metadata(clerk_user)
     role = _normalize_role(unsafe_meta.get("role"))
