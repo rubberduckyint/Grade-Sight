@@ -10,12 +10,14 @@ Underscore-prefixed because nothing outside services/ should import these.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.audit_log import AuditLog
+from ..models.llm_call_log import LLMCallLog
 from .call_context import CallContext
 
 
@@ -49,6 +51,39 @@ async def write_audit_log(
         resource_id=resource_id,
         action=action,
         event_metadata=metadata,
+    )
+    db.add(entry)
+    await db.flush()
+
+
+async def write_llm_call_log(
+    db: AsyncSession,
+    *,
+    ctx: CallContext,
+    model: str,
+    tokens_input: int,
+    tokens_output: int,
+    cost_usd: Decimal,
+    latency_ms: int,
+    success: bool,
+    error_message: str | None = None,
+) -> None:
+    """Append an LLMCallLog row for a Claude call (success or failure).
+
+    Failures are logged too — cost dashboards reflect all attempts and
+    error rates surface in the same view as throughput.
+    """
+    entry = LLMCallLog(
+        organization_id=ctx.organization_id,
+        user_id=ctx.user_id,
+        model=model,
+        tokens_input=tokens_input,
+        tokens_output=tokens_output,
+        cost_usd=cost_usd,
+        latency_ms=latency_ms,
+        request_type=ctx.request_type,
+        success=success,
+        error_message=error_message,
     )
     db.add(entry)
     await db.flush()
