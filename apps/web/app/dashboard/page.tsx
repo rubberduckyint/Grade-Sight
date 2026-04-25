@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createCheckoutSession, fetchEntitlement, fetchMe } from "@/lib/api";
-import { TrialBanner } from "@/components/TrialBanner";
+import { TrialBanner } from "@/components/trial-banner";
 import { AppShell } from "@/components/app-shell";
 import { PageContainer } from "@/components/page-container";
 import { SerifHeadline } from "@/components/serif-headline";
@@ -52,7 +52,8 @@ export default async function DashboardPage() {
           <div className="mb-10">
             <TrialBanner
               daysRemaining={daysRemaining}
-              onCheckout={handleCheckout}
+              role={user.role === "teacher" ? "teacher" : "parent"}
+              onAddCard={handleCheckout}
             />
           </div>
         )}
