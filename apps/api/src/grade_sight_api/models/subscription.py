@@ -11,9 +11,8 @@ import enum
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, ForeignKey, Index, text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Index, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db.base import Base

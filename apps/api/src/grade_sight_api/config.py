@@ -30,5 +30,13 @@ class Settings(BaseSettings):
     stripe_price_parent_monthly: str
     stripe_price_teacher_monthly: str
 
+    anthropic_api_key: str
+
+    r2_account_id: str
+    r2_access_key_id: str
+    r2_secret_access_key: str
+    r2_bucket: str
+    r2_endpoint_url: str
+
 
 settings = Settings()  # type: ignore[call-arg]
