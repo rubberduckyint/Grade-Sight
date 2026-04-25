@@ -1,52 +1,65 @@
 import { redirect } from "next/navigation";
-import { createCheckoutSession, createPortalSession, fetchEntitlement } from "@/lib/api";
+import { createCheckoutSession, fetchEntitlement, fetchMe } from "@/lib/api";
+import { PageContainer } from "@/components/page-container";
+import { SerifHeadline } from "@/components/serif-headline";
+import { SectionEyebrow } from "@/components/section-eyebrow";
+import { Button } from "@/components/ui/button";
+
+async function handleCheckout() {
+  "use server";
+  const url = await createCheckoutSession();
+  redirect(url);
+}
+
+type Branch = "trial-ended" | "canceled" | "past-due";
+
+function branchFromEntitlement(status: string | null | undefined): Branch {
+  if (status === "past_due") return "past-due";
+  if (status === "canceled") return "canceled";
+  return "trial-ended";
+}
+
+const BRANCHES: Record<Branch, { eyebrow: string; headline: string; body: string; cta: string }> = {
+  "trial-ended": {
+    eyebrow: "Trial ended",
+    headline: "Your trial ended yesterday.",
+    body: "Add a card and pick up exactly where you left off.",
+    cta: "Add a card",
+  },
+  canceled: {
+    eyebrow: "Canceled",
+    headline: "You canceled.",
+    body: "We kept everything. Resubscribe whenever it's useful — same price, same data.",
+    cta: "Resubscribe",
+  },
+  "past-due": {
+    eyebrow: "Payment failed",
+    headline: "Your last payment bounced.",
+    body: "Update your card and we'll try again.",
+    cta: "Update card",
+  },
+};
 
 export default async function PaywallPage() {
-  const entitlement = await fetchEntitlement();
+  const [user, entitlement] = await Promise.all([fetchMe(), fetchEntitlement()]);
+  if (!user) redirect("/sign-in");
+  if (entitlement?.is_entitled) redirect("/dashboard");
 
-  let title = "Subscription required";
-  let body = "Your access has ended.";
-  let action: "checkout" | "portal" = "checkout";
-
-  if (entitlement) {
-    if (entitlement.status === "canceled") {
-      if (entitlement.current_period_end === null && entitlement.trial_ends_at !== null) {
-        title = "Your trial has ended";
-        body = "Add a card to reactivate your subscription.";
-        action = "checkout";
-      } else {
-        title = "Your subscription was canceled";
-        body = "Reactivate through the Customer Portal.";
-        action = "portal";
-      }
-    } else if (entitlement.status === "past_due") {
-      title = "Payment issue detected";
-      body = "Please update your payment method.";
-      action = "portal";
-    }
-  }
-
-  async function handleAction() {
-    "use server";
-    const url =
-      action === "checkout"
-        ? await createCheckoutSession()
-        : await createPortalSession();
-    redirect(url);
-  }
+  const branch = branchFromEntitlement(entitlement?.status);
+  const copy = BRANCHES[branch];
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center p-8 text-center">
-      <h1 className="text-3xl font-bold">{title}</h1>
-      <p className="mt-3 text-lg text-gray-600">{body}</p>
-      <form action={handleAction}>
-        <button
-          type="submit"
-          className="mt-8 rounded-lg bg-black px-6 py-3 text-base font-medium text-white hover:bg-gray-800"
-        >
-          {action === "checkout" ? "Add card" : "Manage billing"}
-        </button>
+    <PageContainer className="max-w-[640px] md:py-32">
+      <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
+      <div className="mt-4 mb-4">
+        <SerifHeadline level="page" as="h1">
+          {copy.headline}
+        </SerifHeadline>
+      </div>
+      <p className="mb-10 text-lg leading-snug text-ink-soft">{copy.body}</p>
+      <form action={handleCheckout}>
+        <Button type="submit" size="lg">{copy.cta}</Button>
       </form>
-    </main>
+    </PageContainer>
   );
 }
