@@ -7,7 +7,7 @@ import { SerifHeadline } from "./serif-headline";
 export interface PaywallInlineProps {
   feature: string;
   body?: string;
-  onAddCard: () => Promise<string> | void;
+  onAddCard: () => Promise<void>;
   children?: ReactNode;
 }
 
@@ -15,7 +15,7 @@ export function PaywallInline({ feature, body, onAddCard, children }: PaywallInl
   return (
     <div className="space-y-6">
       {children && (
-        <div aria-hidden className="pointer-events-none opacity-60">
+        <div aria-hidden={true} className="pointer-events-none opacity-60">
           {children}
         </div>
       )}
@@ -31,7 +31,7 @@ export function PaywallInline({ feature, body, onAddCard, children }: PaywallInl
             {body ??
               "Add a card to keep using diagnostic features. We won't charge you until your trial ends."}
           </p>
-          <form action={onAddCard as never}>
+          <form action={onAddCard}>
             <Button type="submit">Add a card</Button>
           </form>
         </CardContent>
