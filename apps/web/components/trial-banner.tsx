@@ -30,7 +30,7 @@ const toneStyles: Record<Tone, { wrap: string; eyebrow: string; rule: string }> 
   },
   insight: {
     wrap: "bg-insight-soft border-rule-soft",
-    eyebrow: "text-[oklch(0.48_0.12_72)]",
+    eyebrow: "text-insight-text",
     rule: "border-l-2 border-insight",
   },
   urgent: {
