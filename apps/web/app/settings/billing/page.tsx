@@ -1,77 +1,106 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createPortalSession, fetchEntitlement } from "@/lib/api";
+import { createPortalSession, fetchEntitlement, fetchMe } from "@/lib/api";
+import { AppShell } from "@/components/app-shell";
+import { PageContainer } from "@/components/page-container";
+import { SectionEyebrow } from "@/components/section-eyebrow";
+import { SerifHeadline } from "@/components/serif-headline";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 
-const PLAN_LABELS: Record<string, string> = {
-  parent_monthly: "Parent Monthly — $15/month",
-  teacher_monthly: "Teacher Monthly — $25/month",
+async function handlePortal() {
+  "use server";
+  const url = await createPortalSession();
+  redirect(url);
+}
+
+const PLAN_LABEL: Record<string, { name: string; price: string }> = {
+  parent_monthly: { name: "Parent Monthly", price: "$15 / month" },
+  teacher_monthly: { name: "Teacher Monthly", price: "$29 / month" },
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  trialing: "Trial",
+const STATUS_LABEL: Record<string, string> = {
+  trialing: "Trialing",
   active: "Active",
-  past_due: "Payment overdue",
+  past_due: "Past due",
   canceled: "Canceled",
-  incomplete: "Incomplete setup",
+  incomplete: "Incomplete",
 };
+
+function formatDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 export default async function BillingSettingsPage() {
-  const entitlement = await fetchEntitlement();
+  const [user, entitlement] = await Promise.all([fetchMe(), fetchEntitlement()]);
+  if (!user) redirect("/sign-in");
 
-  if (!entitlement || entitlement.status === null) {
-    return (
-      <main className="mx-auto max-w-2xl p-8">
-        <h1 className="text-2xl font-bold">Billing</h1>
-        <p className="mt-4 text-gray-600">No subscription found.</p>
-      </main>
-    );
-  }
-
-  const planLabel = entitlement.plan ? PLAN_LABELS[entitlement.plan] ?? entitlement.plan : "—";
-  const statusLabel = STATUS_LABELS[entitlement.status] ?? entitlement.status;
-  const nextBilling =
-    entitlement.current_period_end !== null
-      ? new Date(entitlement.current_period_end).toLocaleDateString()
-      : entitlement.trial_ends_at !== null
-        ? `${new Date(entitlement.trial_ends_at).toLocaleDateString()} (trial end)`
-        : "—";
-
-  async function openPortal() {
-    "use server";
-    const url = await createPortalSession();
-    redirect(url);
-  }
+  const plan = entitlement?.plan ? PLAN_LABEL[entitlement.plan] : null;
+  const statusLabel = entitlement?.status ? STATUS_LABEL[entitlement.status] : "—";
+  const periodEnd = formatDate(entitlement?.current_period_end);
+  const trialEnd = formatDate(entitlement?.trial_ends_at);
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="text-2xl font-bold">Billing</h1>
-      <dl className="mt-6 divide-y divide-gray-200 border-y border-gray-200">
-        <div className="flex justify-between py-3">
-          <dt className="text-sm text-gray-600">Plan</dt>
-          <dd className="text-sm font-medium">{planLabel}</dd>
+    <AppShell orgName={user.organization?.name}>
+      <PageContainer className="max-w-[720px]">
+        <SectionEyebrow>Settings</SectionEyebrow>
+        <div className="mt-4 mb-10">
+          <SerifHeadline level="page" as="h1">
+            Billing &amp; plan
+          </SerifHeadline>
         </div>
-        <div className="flex justify-between py-3">
-          <dt className="text-sm text-gray-600">Status</dt>
-          <dd className="text-sm font-medium">{statusLabel}</dd>
-        </div>
-        <div className="flex justify-between py-3">
-          <dt className="text-sm text-gray-600">Next billing date</dt>
-          <dd className="text-sm font-medium">{nextBilling}</dd>
-        </div>
-      </dl>
-      <form action={openPortal}>
-        <button
-          type="submit"
-          className="mt-6 rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
-        >
-          Manage billing (Stripe Customer Portal)
-        </button>
-      </form>
-      <p className="mt-4 text-sm text-gray-500">
-        <Link href="/dashboard" className="underline">
-          ← Back to dashboard
-        </Link>
-      </p>
-    </main>
+
+        <Card className="border-rule bg-paper shadow-none">
+          <CardContent className="p-8">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <SectionEyebrow>Current plan</SectionEyebrow>
+                <p className="mt-3 font-serif text-xl text-ink">
+                  {plan ? plan.name : "No active plan"}
+                </p>
+                {plan && (
+                  <p className="mt-1 text-base text-ink-soft">{plan.price}</p>
+                )}
+              </div>
+              <Badge variant="secondary" className="font-mono uppercase tracking-[0.12em]">
+                {statusLabel}
+              </Badge>
+            </div>
+
+            <Separator className="my-8 bg-rule-soft" />
+
+            <dl className="grid gap-6 md:grid-cols-2">
+              {entitlement?.status === "trialing" && trialEnd && (
+                <div>
+                  <SectionEyebrow>Trial ends</SectionEyebrow>
+                  <dd className="mt-2 text-base text-ink">{trialEnd}</dd>
+                </div>
+              )}
+              {entitlement?.status !== "trialing" && periodEnd && (
+                <div>
+                  <SectionEyebrow>Next billing date</SectionEyebrow>
+                  <dd className="mt-2 text-base text-ink">{periodEnd}</dd>
+                </div>
+              )}
+            </dl>
+
+            <Separator className="my-8 bg-rule-soft" />
+
+            <form action={handlePortal}>
+              <Button type="submit">Manage billing in Stripe</Button>
+              <p className="mt-3 font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
+                Opens Stripe Customer Portal
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </PageContainer>
+    </AppShell>
   );
 }
