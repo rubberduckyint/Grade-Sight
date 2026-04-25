@@ -119,7 +119,7 @@ async def _handle_subscription_created(
     sub.current_period_end = datetime.fromtimestamp(
         stripe_sub["current_period_end"], tz=UTC
     )
-    sub.cancel_at_period_end = stripe_sub.get("cancel_at_period_end", False)
+    sub.cancel_at_period_end = getattr(stripe_sub, "cancel_at_period_end", False)
     event_row.subscription_id = sub.id
     await _write_state_audit(db, sub, "stripe_subscription_linked", event.id)
 
@@ -141,7 +141,7 @@ async def _handle_subscription_updated(
     sub.current_period_end = datetime.fromtimestamp(
         stripe_sub["current_period_end"], tz=UTC
     )
-    sub.cancel_at_period_end = stripe_sub.get("cancel_at_period_end", False)
+    sub.cancel_at_period_end = getattr(stripe_sub, "cancel_at_period_end", False)
     event_row.subscription_id = sub.id
     await _denormalize_org_status(db, sub.organization_id, new_status)
     await _write_state_audit(db, sub, f"subscription_{new_status.value}", event.id)
@@ -166,7 +166,7 @@ async def _handle_payment_succeeded(
 ) -> None:
     """invoice.payment_succeeded — log and audit."""
     invoice = event.data["object"]
-    customer_id = invoice.get("customer")
+    customer_id = getattr(invoice, "customer", None)
     sub = (
         await _find_subscription_by_customer(db, customer_id)
         if customer_id
@@ -180,8 +180,8 @@ async def _handle_payment_succeeded(
             "payment_succeeded",
             event.id,
             extra={
-                "invoice_id": invoice.get("id"),
-                "amount_paid": invoice.get("amount_paid"),
+                "invoice_id": getattr(invoice, "id", None),
+                "amount_paid": getattr(invoice, "amount_paid", None),
             },
         )
 
@@ -191,7 +191,7 @@ async def _handle_payment_failed(
 ) -> None:
     """invoice.payment_failed — mark past_due + audit."""
     invoice = event.data["object"]
-    customer_id = invoice.get("customer")
+    customer_id = getattr(invoice, "customer", None)
     sub = (
         await _find_subscription_by_customer(db, customer_id)
         if customer_id
@@ -207,7 +207,7 @@ async def _handle_payment_failed(
         sub,
         "payment_failed",
         event.id,
-        extra={"invoice_id": invoice.get("id")},
+        extra={"invoice_id": getattr(invoice, "id", None)},
     )
 
 
