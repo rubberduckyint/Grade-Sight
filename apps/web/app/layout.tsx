@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Source_Serif_4, Inter, JetBrains_Mono, Caveat } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const serif = Source_Serif_4({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
@@ -20,7 +21,22 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         lang="en"
         className={`${serif.variable} ${sans.variable} ${mono.variable} ${hand.variable} h-full antialiased`}
       >
-        <body className="min-h-full flex flex-col">{children}</body>
+        <body className="min-h-full flex flex-col">
+          {children}
+          <Toaster
+            theme="light"
+            toastOptions={{
+              classNames: {
+                toast:
+                  "border border-rule bg-paper text-ink rounded-[var(--radius-sm)] shadow-none",
+                title: "font-serif text-base",
+                description: "text-sm text-ink-soft",
+                actionButton: "bg-ink text-paper rounded-[var(--radius-sm)]",
+                cancelButton: "border border-rule text-ink rounded-[var(--radius-sm)]",
+              },
+            }}
+          />
+        </body>
       </html>
     </ClerkProvider>
   );
