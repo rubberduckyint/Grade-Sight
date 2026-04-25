@@ -39,9 +39,15 @@ def _test_database_url() -> str:
     return base + "_test"
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 async def async_engine() -> AsyncGenerator[AsyncEngine, None]:
-    """Module-scoped AsyncEngine bound to the test DB."""
+    """Function-scoped AsyncEngine bound to the test DB.
+
+    Function-scoped (not module-scoped) so that each test gets an engine
+    whose connection pool is tied to the current event loop. asyncpg pools
+    are loop-bound; reusing a module-scoped engine across function-scoped
+    test loops raises 'Future attached to a different loop'.
+    """
     test_engine = create_async_engine(_test_database_url(), pool_pre_ping=True)
     try:
         yield test_engine
