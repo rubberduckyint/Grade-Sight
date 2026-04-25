@@ -2,19 +2,23 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { SerifHeadline } from "./serif-headline";
 
+type EmptyStateAction =
+  | { actionLabel: string; onAction: () => void }
+  | { actionLabel?: never; onAction?: never };
+
+type EmptyStateProps = {
+  title: string;
+  body: string;
+  eyebrow?: ReactNode;
+} & EmptyStateAction;
+
 export function EmptyState({
   title,
   body,
   actionLabel,
   onAction,
   eyebrow,
-}: {
-  title: string;
-  body: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  eyebrow?: ReactNode;
-}) {
+}: EmptyStateProps) {
   return (
     <div className="rounded-[var(--radius-sm)] border border-rule bg-paper px-10 py-16 text-center">
       {eyebrow && <div className="mb-4">{eyebrow}</div>}
