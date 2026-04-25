@@ -13,7 +13,6 @@ const buttonVariants = cva(
         secondary: "border border-rule bg-paper text-ink hover:bg-paper-soft",
         ghost: "text-ink hover:bg-paper-soft",
         link: "text-accent underline-offset-4 hover:underline",
-        destructive: "border border-mark text-mark hover:bg-paper-soft",
       },
       size: {
         default: "h-11 px-5 py-2",
