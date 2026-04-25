@@ -78,13 +78,17 @@ export default async function BillingSettingsPage() {
             <dl className="grid gap-6 md:grid-cols-2">
               {entitlement?.status === "trialing" && trialEnd && (
                 <div>
-                  <SectionEyebrow>Trial ends</SectionEyebrow>
+                  <dt className="font-mono text-xs uppercase tracking-[0.14em] text-ink-mute">
+                    Trial ends
+                  </dt>
                   <dd className="mt-2 text-base text-ink">{trialEnd}</dd>
                 </div>
               )}
               {entitlement?.status !== "trialing" && periodEnd && (
                 <div>
-                  <SectionEyebrow>Next billing date</SectionEyebrow>
+                  <dt className="font-mono text-xs uppercase tracking-[0.14em] text-ink-mute">
+                    Next billing date
+                  </dt>
                   <dd className="mt-2 text-base text-ink">{periodEnd}</dd>
                 </div>
               )}
