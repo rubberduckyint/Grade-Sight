@@ -88,8 +88,7 @@ export function TrialBanner({
         styles.wrap,
         styles.rule,
       )}
-      role="status"
-      aria-live={tone === "urgent" ? "assertive" : "polite"}
+      role={tone === "urgent" ? "alert" : "status"}
     >
       <div className="min-w-0 flex-1">
         <SectionEyebrow className={styles.eyebrow}>{copy.eyebrow}</SectionEyebrow>
