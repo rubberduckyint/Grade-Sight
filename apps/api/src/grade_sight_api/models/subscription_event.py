@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, func
+from sqlalchemy import DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,7 +29,9 @@ class SubscriptionEvent(Base):
         index=True,
     )
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    processed_at: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
+    processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),
         nullable=False,

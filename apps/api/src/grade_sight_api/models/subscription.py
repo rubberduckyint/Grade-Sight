@@ -11,6 +11,7 @@ import enum
 from datetime import datetime
 from uuid import UUID, uuid4
 
+from sqlalchemy import DateTime
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, Index, text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -57,8 +58,12 @@ class Subscription(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         index=True,
     )
-    trial_ends_at: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
-    current_period_end: Mapped[datetime | None] = mapped_column(nullable=True)
+    trial_ends_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    current_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     cancel_at_period_end: Mapped[bool] = mapped_column(
         nullable=False,
         server_default=text("false"),
