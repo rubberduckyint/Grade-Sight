@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Fonts loaded via next/font/google in app/layout.tsx:
+   Source Serif 4 → --font-serif
+   Inter          → --font-sans
+   JetBrains Mono → --font-mono
+   Caveat         → --font-hand  (diagnostic-mock handwriting ONLY) */
+
+@theme {
+  /* --- Paper & ink — warm, not gray --- */
+  --color-paper:       oklch(0.985 0.006 82);
+  --color-paper-soft:  oklch(0.965 0.008 82);
+  --color-paper-deep:  oklch(0.94  0.012 82);
+  --color-rule:        oklch(0.88  0.012 82);
+  --color-rule-soft:   oklch(0.92  0.010 82);
+
+  --color-ink:         oklch(0.22  0.015 75);
+  --color-ink-soft:    oklch(0.42  0.015 75);
+  --color-ink-mute:    oklch(0.58  0.012 75);
+
+  /* Single chrome accent — pen-ink blue */
+  --color-accent:      oklch(0.42  0.09  252);
+  --color-accent-soft: oklch(0.92  0.03  252);
+
+  /* Diagnostic amber — insight moments only */
+  --color-insight:     oklch(0.72  0.12  72);
+  --color-insight-soft:oklch(0.95  0.035 82);
+
+  /* Red — error marks on student work only. Never UI. */
+  --color-mark:        oklch(0.56  0.15  28);
+
+  /* Semantic aliases */
+  --color-background:    var(--color-paper);
+  --color-surface:       var(--color-paper);
+  --color-surface-muted: var(--color-paper-soft);
+  --color-border:        var(--color-rule);
+  --color-border-soft:   var(--color-rule-soft);
+  --color-foreground:    var(--color-ink);
+  --color-muted:         var(--color-ink-soft);
+  --color-subtle:        var(--color-ink-mute);
+
+  /* --- Type · 18px base --- */
+  --text-xs:   0.722rem; /* 13 · eyebrows, captions, mono labels */
+  --text-sm:   0.833rem; /* 15 · dense rows only */
+  --text-base: 1rem;     /* 18 · default body */
+  --text-lg:   1.111rem; /* 20 · parent lead */
+  --text-xl:   1.222rem; /* 22 · card titles */
+  --text-2xl:  1.556rem; /* 28 · section heads */
+  --text-3xl:  2rem;     /* 36 · page heads */
+  --text-5xl:  3rem;     /* 54 · dashboard greeting */
+  --text-7xl:  4.444rem; /* 80 · landing display ONLY */
+
+  --leading-tight:  1.1;
+  --leading-snug:   1.25;
+  --leading-normal: 1.55;
+  --leading-loose:  1.65;
+
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-sans:  "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:  "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-hand:  "Caveat", cursive;
+
+  /* --- Radii --- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* --- Focus ring --- */
+  --ring-color: var(--color-accent);
+  --ring-offset: 2px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    font-size: 18px;
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-paper);
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring-color);
+    outline-offset: var(--ring-offset);
+    border-radius: var(--radius-sm);
+  }
+  ::selection {
+    background: var(--color-accent-soft);
+    color: var(--color-ink);
+  }
 }
