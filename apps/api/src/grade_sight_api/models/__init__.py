@@ -8,6 +8,9 @@ from .answer_key import AnswerKey
 from .assessment import Assessment, AssessmentStatus
 from .audit_log import AuditLog
 from .class_member import ClassMember
+from .error_category import ErrorCategory
+from .error_pattern import ErrorPattern
+from .error_subcategory import ErrorSubcategory
 from .klass import Klass
 from .llm_call_log import LLMCallLog
 from .organization import Organization
@@ -23,6 +26,9 @@ __all__ = [
     "AssessmentStatus",
     "AuditLog",
     "ClassMember",
+    "ErrorCategory",
+    "ErrorPattern",
+    "ErrorSubcategory",
     "Klass",
     "LLMCallLog",
     "Organization",
