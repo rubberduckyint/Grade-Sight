@@ -12,8 +12,12 @@ dashboards reflect actual API spend.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from decimal import Decimal
+
+import anthropic
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +32,38 @@ _PRICES_PER_MILLION: dict[str, tuple[Decimal, Decimal]] = {
 
 class ClaudeServiceError(Exception):
     """Raised by claude_service public functions on terminal failures."""
+
+
+_RETRYABLE_EXCEPTIONS: tuple[type[Exception], ...] = (
+    anthropic.APIConnectionError,
+    anthropic.APITimeoutError,
+    anthropic.RateLimitError,
+)
+
+
+async def _with_retries[T](
+    fn: Callable[[], Awaitable[T]],
+    *,
+    max_attempts: int = 3,
+    backoff_seconds: float = 1.0,
+) -> T:
+    """Call fn with exponential backoff on retryable Anthropic errors.
+
+    Retryable: connection errors, timeouts, rate limits.
+    Non-retryable (raised immediately): bad request, auth, permission, all 4xx
+    other than 429.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(max_attempts):
+        try:
+            return await fn()
+        except _RETRYABLE_EXCEPTIONS as exc:
+            last_exc = exc
+            if attempt + 1 == max_attempts:
+                break
+            await asyncio.sleep(backoff_seconds * (2**attempt))
+    assert last_exc is not None  # for mypy; loop above guarantees this
+    raise last_exc
 
 
 def compute_cost(*, model: str, tokens_input: int, tokens_output: int) -> Decimal:
