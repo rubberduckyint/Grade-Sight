@@ -113,3 +113,27 @@ async def get_download_url(
         extra={"key": key, "expires_in": expires_in},
     )
     return url
+
+
+async def delete_object(
+    *,
+    ctx: CallContext,
+    key: str,
+    db: AsyncSession,
+) -> None:
+    """Hard-delete an object from R2."""
+    session = _get_session()
+    async with session.client(**_client_kwargs()) as client:
+        await client.delete_object(
+            Bucket=settings.r2_bucket,
+            Key=key,
+        )
+
+    await write_audit_log(
+        db,
+        ctx=ctx,
+        resource_type="storage_object",
+        resource_id=None,
+        action="storage_object_deleted",
+        extra={"key": key},
+    )
