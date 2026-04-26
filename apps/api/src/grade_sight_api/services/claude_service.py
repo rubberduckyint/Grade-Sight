@@ -13,12 +13,13 @@ dashboards reflect actual API spend.
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 import anthropic
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -175,6 +176,113 @@ async def call_text(
         )
 
     return ClaudeTextResponse(
+        text="".join(text_blocks),
+        tokens_input=tokens_in,
+        tokens_output=tokens_out,
+        model=model,
+    )
+
+
+@dataclass(frozen=True)
+class ClaudeVisionResponse:
+    text: str
+    tokens_input: int
+    tokens_output: int
+    model: str
+
+
+def _build_vision_message(image: bytes | str, prompt: str) -> dict[str, Any]:
+    if isinstance(image, bytes):
+        source: dict[str, Any] = {
+            "type": "base64",
+            "media_type": "image/png",
+            "data": base64.b64encode(image).decode("ascii"),
+        }
+    else:
+        source = {"type": "url", "url": image}
+    return {
+        "role": "user",
+        "content": [
+            {"type": "image", "source": source},
+            {"type": "text", "text": prompt},
+        ],
+    }
+
+
+async def call_vision(
+    *,
+    ctx: CallContext,
+    model: str,
+    system: str,
+    image: bytes | str,
+    prompt: str,
+    max_tokens: int,
+    db: AsyncSession,
+) -> ClaudeVisionResponse:
+    """Call Claude with an image + prompt.
+
+    `image` accepts raw bytes (sent as base64) or a URL string.
+    Writes LLMCallLog on every attempt and audit_log when ctx.contains_pii.
+    """
+    client = _get_client()
+    user_message = _build_vision_message(image, prompt)
+
+    typed_message = cast(anthropic.types.MessageParam, user_message)
+
+    async def _attempt() -> Any:
+        return await client.messages.create(
+            model=model,
+            system=system,
+            messages=[typed_message],
+            max_tokens=max_tokens,
+        )
+
+    start = time.monotonic()
+    try:
+        response = await _with_retries(_attempt)
+    except Exception as exc:
+        latency_ms = int((time.monotonic() - start) * 1000)
+        await write_llm_call_log(
+            db,
+            ctx=ctx,
+            model=model,
+            tokens_input=0,
+            tokens_output=0,
+            cost_usd=Decimal("0"),
+            latency_ms=latency_ms,
+            success=False,
+            error_message=f"{type(exc).__name__}: {exc}",
+        )
+        raise ClaudeServiceError(str(exc)) from exc
+
+    latency_ms = int((time.monotonic() - start) * 1000)
+    text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+    tokens_in = response.usage.input_tokens
+    tokens_out = response.usage.output_tokens
+    cost = compute_cost(model=model, tokens_input=tokens_in, tokens_output=tokens_out)
+
+    await write_llm_call_log(
+        db,
+        ctx=ctx,
+        model=model,
+        tokens_input=tokens_in,
+        tokens_output=tokens_out,
+        cost_usd=cost,
+        latency_ms=latency_ms,
+        success=True,
+    )
+
+    if ctx.contains_pii:
+        await write_audit_log(
+            db,
+            ctx=ctx,
+            resource_type="claude_call",
+            resource_id=None,
+            action="claude_vision_call",
+            extra={"model": model, "tokens_input": tokens_in, "tokens_output": tokens_out},
+        )
+
+    return ClaudeVisionResponse(
         text="".join(text_blocks),
         tokens_input=tokens_in,
         tokens_output=tokens_out,
