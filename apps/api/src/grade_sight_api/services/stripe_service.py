@@ -136,6 +136,20 @@ async def create_customer_portal_session(
         customer=sub.stripe_customer_id,
         return_url=return_url,
     )
+    ctx = CallContext(
+        organization_id=organization_id,
+        user_id=None,
+        request_type="stripe_portal_session_create",
+        contains_pii=False,
+    )
+    await write_audit_log(
+        db,
+        ctx=ctx,
+        resource_type="subscription",
+        resource_id=None,
+        action="stripe_portal_session_started",
+        extra={"session_id": session.id},
+    )
     return session
 
 

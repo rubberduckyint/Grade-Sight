@@ -95,3 +95,49 @@ async def test_create_checkout_session_writes_audit_row(
     assert row.action == "stripe_checkout_session_started"
     assert row.event_metadata["session_id"] == "cs_TEST456"
     assert row.event_metadata["plan"] == "parent_monthly"
+
+
+async def test_create_customer_portal_session_writes_audit_row(
+    async_session: AsyncSession,
+) -> None:
+    from grade_sight_api.models.subscription import Plan, Subscription, SubscriptionStatus
+
+    org = Organization(name="Test Org")
+    async_session.add(org)
+    await async_session.flush()
+
+    sub = Subscription(
+        organization_id=org.id,
+        stripe_customer_id="cus_TEST789",
+        stripe_subscription_id=None,
+        plan=Plan.parent_monthly,
+        status=SubscriptionStatus.active,
+        trial_ends_at=None,
+        current_period_end=None,
+        cancel_at_period_end=False,
+    )
+    async_session.add(sub)
+    await async_session.flush()
+
+    fake_session = MagicMock()
+    fake_session.id = "bps_TEST999"
+    fake_session.url = "https://billing.stripe.com/p/session/bps_TEST999"
+
+    with patch(
+        "grade_sight_api.services.stripe_service.stripe.billing_portal.Session.create_async",
+        new=AsyncMock(return_value=fake_session),
+    ):
+        result = await stripe_service.create_customer_portal_session(
+            organization_id=org.id,
+            db=async_session,
+            return_url="https://example.com/settings/billing",
+        )
+
+    assert result.id == "bps_TEST999"
+
+    rows = (await async_session.execute(select(AuditLog))).scalars().all()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.organization_id == org.id
+    assert row.action == "stripe_portal_session_started"
+    assert row.event_metadata["session_id"] == "bps_TEST999"
