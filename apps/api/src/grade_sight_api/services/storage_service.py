@@ -86,3 +86,30 @@ async def get_upload_url(
         extra={"key": key, "content_type": content_type, "expires_in": expires_in},
     )
     return url
+
+
+async def get_download_url(
+    *,
+    ctx: CallContext,
+    key: str,
+    expires_in: int = 600,
+    db: AsyncSession,
+) -> str:
+    """Return a presigned GET URL for direct browser download from R2."""
+    session = _get_session()
+    async with session.client(**_client_kwargs()) as client:
+        url = cast(str, await client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": settings.r2_bucket, "Key": key},
+            ExpiresIn=expires_in,
+        ))
+
+    await write_audit_log(
+        db,
+        ctx=ctx,
+        resource_type="storage_object",
+        resource_id=None,
+        action="presigned_download_issued",
+        extra={"key": key, "expires_in": expires_in},
+    )
+    return url
