@@ -18,6 +18,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import stripe
 from clerk_backend_api.models.createorganizationop import CreateOrganizationRequestBody
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select, text
@@ -114,6 +115,37 @@ def _extract_unsafe_metadata(clerk_user: Any) -> dict[str, Any]:
     return {}
 
 
+async def _cleanup_partial_lazy_upsert(
+    *,
+    clerk_org_id: str | None,
+    stripe_customer_id: str | None,
+) -> None:
+    """Best-effort cleanup of external resources created during a failed lazy upsert.
+
+    Each delete is independently try/except'd — cleanup-of-cleanup failures log
+    at WARNING with exc_info, and never propagate. The caller's original
+    exception is what surfaces to FastAPI's error handler.
+    """
+    if clerk_org_id:
+        try:
+            clerk_client.organizations.delete(organization_id=clerk_org_id)
+        except Exception:
+            logger.warning(
+                "Lazy upsert cleanup: failed to delete Clerk org %s",
+                clerk_org_id,
+                exc_info=True,
+            )
+    if stripe_customer_id:
+        try:
+            await stripe.Customer.delete_async(stripe_customer_id)
+        except Exception:
+            logger.warning(
+                "Lazy upsert cleanup: failed to delete Stripe customer %s",
+                stripe_customer_id,
+                exc_info=True,
+            )
+
+
 async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_session),
@@ -186,55 +218,71 @@ async def get_current_user(
     org_name = _default_org_name(role, first_name, last_name, email)
     plan = _plan_for_role(role)
 
-    # 1. Create Clerk org (for both parent and teacher now)
-    clerk_org = clerk_client.organizations.create(
-        request=CreateOrganizationRequestBody(name=org_name, created_by=clerk_user_id)
-    )
-    clerk_org_id = getattr(clerk_org, "id", None)
+    # Track which external resources got created, in case we need to clean up.
+    clerk_org_id_for_cleanup: str | None = None
+    stripe_customer_id_for_cleanup: str | None = None
 
-    # 2. Insert our organizations row
-    new_org = Organization(
-        name=org_name,
-        clerk_org_id=str(clerk_org_id) if clerk_org_id else None,
-    )
-    db.add(new_org)
-    await db.flush()
+    try:
+        # 1. Create Clerk org (for both parent and teacher now)
+        clerk_org = clerk_client.organizations.create(
+            request=CreateOrganizationRequestBody(
+                name=org_name, created_by=clerk_user_id
+            )
+        )
+        clerk_org_id = getattr(clerk_org, "id", None)
+        if clerk_org_id:
+            clerk_org_id_for_cleanup = str(clerk_org_id)
 
-    # 3. Create Stripe customer via service layer (writes audit log)
-    stripe_customer = await stripe_service.create_customer(
-        email=email,
-        organization_id=new_org.id,
-        db=db,
-    )
+        # 2. Insert our organizations row
+        new_org = Organization(
+            name=org_name,
+            clerk_org_id=str(clerk_org_id) if clerk_org_id else None,
+        )
+        db.add(new_org)
+        await db.flush()
 
-    # 4. Insert subscription row: trialing, 30-day trial, no stripe_subscription_id yet
-    trial_ends_at = datetime.now(UTC) + timedelta(days=30)
-    new_sub = Subscription(
-        organization_id=new_org.id,
-        stripe_customer_id=stripe_customer.id,
-        stripe_subscription_id=None,
-        plan=plan,
-        status=SubscriptionStatus.trialing,
-        trial_ends_at=trial_ends_at,
-        current_period_end=None,
-        cancel_at_period_end=False,
-    )
-    db.add(new_sub)
+        # 3. Create Stripe customer via service layer (writes audit log)
+        stripe_customer = await stripe_service.create_customer(
+            email=email,
+            organization_id=new_org.id,
+            db=db,
+        )
+        stripe_customer_id_for_cleanup = stripe_customer.id
 
-    # 5. Denormalize subscription status onto organization
-    new_org.subscription_status = SubscriptionStatus.trialing
+        # 4. Insert subscription row: trialing, 30-day trial, no stripe_subscription_id yet
+        trial_ends_at = datetime.now(UTC) + timedelta(days=30)
+        new_sub = Subscription(
+            organization_id=new_org.id,
+            stripe_customer_id=stripe_customer.id,
+            stripe_subscription_id=None,
+            plan=plan,
+            status=SubscriptionStatus.trialing,
+            trial_ends_at=trial_ends_at,
+            current_period_end=None,
+            cancel_at_period_end=False,
+        )
+        db.add(new_sub)
 
-    # 6. Insert users row
-    new_user = User(
-        clerk_id=clerk_user_id,
-        email=email,
-        role=role,
-        first_name=first_name,
-        last_name=last_name,
-        organization_id=new_org.id,
-    )
-    db.add(new_user)
-    await db.flush()
+        # 5. Denormalize subscription status onto organization
+        new_org.subscription_status = SubscriptionStatus.trialing
+
+        # 6. Insert users row
+        new_user = User(
+            clerk_id=clerk_user_id,
+            email=email,
+            role=role,
+            first_name=first_name,
+            last_name=last_name,
+            organization_id=new_org.id,
+        )
+        db.add(new_user)
+        await db.flush()
+    except Exception:
+        await _cleanup_partial_lazy_upsert(
+            clerk_org_id=clerk_org_id_for_cleanup,
+            stripe_customer_id=stripe_customer_id_for_cleanup,
+        )
+        raise
 
     logger.info(
         "Lazy upsert created org=%s user=%s role=%s plan=%s",
