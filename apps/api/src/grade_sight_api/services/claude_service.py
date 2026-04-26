@@ -18,7 +18,7 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, cast
+from typing import Any
 
 import anthropic
 from sqlalchemy.ext.asyncio import AsyncSession
