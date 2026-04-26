@@ -14,10 +14,18 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any, cast
 
 import anthropic
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..config import settings
+from ._logging import write_audit_log, write_llm_call_log
+from .call_context import CallContext
 
 logger = logging.getLogger(__name__)
 
@@ -75,4 +83,100 @@ def compute_cost(*, model: str, tokens_input: int, tokens_output: int) -> Decima
     return (
         Decimal(tokens_input) * input_rate / million
         + Decimal(tokens_output) * output_rate / million
+    )
+
+
+_anthropic_client: anthropic.AsyncAnthropic | None = None
+
+
+def _get_client() -> anthropic.AsyncAnthropic:
+    """Lazy singleton — instantiated on first use, mockable in tests via patch.object."""
+    global _anthropic_client
+    if _anthropic_client is None:
+        _anthropic_client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    return _anthropic_client
+
+
+@dataclass(frozen=True)
+class ClaudeTextResponse:
+    text: str
+    tokens_input: int
+    tokens_output: int
+    model: str
+
+
+async def call_text(
+    *,
+    ctx: CallContext,
+    model: str,
+    system: str,
+    messages: list[anthropic.types.MessageParam],
+    max_tokens: int,
+    db: AsyncSession,
+) -> ClaudeTextResponse:
+    """Call Claude with a text-only message list. Returns parsed response.
+
+    Writes an LLMCallLog row on every attempt (success or failure). On PII
+    calls (ctx.contains_pii=True), also writes an audit_log row.
+    """
+    client = _get_client()
+
+    async def _attempt() -> Any:
+        return await client.messages.create(
+            model=model,
+            system=system,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+
+    start = time.monotonic()
+    try:
+        response = await _with_retries(_attempt)
+    except Exception as exc:
+        latency_ms = int((time.monotonic() - start) * 1000)
+        await write_llm_call_log(
+            db,
+            ctx=ctx,
+            model=model,
+            tokens_input=0,
+            tokens_output=0,
+            cost_usd=Decimal("0"),
+            latency_ms=latency_ms,
+            success=False,
+            error_message=f"{type(exc).__name__}: {exc}",
+        )
+        raise ClaudeServiceError(str(exc)) from exc
+
+    latency_ms = int((time.monotonic() - start) * 1000)
+    text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+    tokens_in = response.usage.input_tokens
+    tokens_out = response.usage.output_tokens
+    cost = compute_cost(model=model, tokens_input=tokens_in, tokens_output=tokens_out)
+
+    await write_llm_call_log(
+        db,
+        ctx=ctx,
+        model=model,
+        tokens_input=tokens_in,
+        tokens_output=tokens_out,
+        cost_usd=cost,
+        latency_ms=latency_ms,
+        success=True,
+    )
+
+    if ctx.contains_pii:
+        await write_audit_log(
+            db,
+            ctx=ctx,
+            resource_type="claude_call",
+            resource_id=None,
+            action="claude_text_call",
+            extra={"model": model, "tokens_input": tokens_in, "tokens_output": tokens_out},
+        )
+
+    return ClaudeTextResponse(
+        text="".join(text_blocks),
+        tokens_input=tokens_in,
+        tokens_output=tokens_out,
+        model=model,
     )
