@@ -16,8 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
-from ..models.audit_log import AuditLog
 from ..models.subscription import Plan, Subscription
+from ._logging import write_audit_log
+from .call_context import CallContext
 
 logger = logging.getLogger(__name__)
 
@@ -34,26 +35,6 @@ def _price_id_for_plan(plan: Plan) -> str:
     raise ValueError(f"No Stripe price configured for plan: {plan}")
 
 
-async def _write_audit_log(
-    db: AsyncSession,
-    *,
-    organization_id: UUID,
-    action: str,
-    event_metadata: dict[str, Any],
-) -> None:
-    """Insert an audit_log row for a Stripe-related state change."""
-    entry = AuditLog(
-        organization_id=organization_id,
-        user_id=None,
-        resource_type="subscription",
-        resource_id=None,
-        action=action,
-        event_metadata=event_metadata,
-    )
-    db.add(entry)
-    await db.flush()
-
-
 async def create_customer(
     email: str,
     organization_id: UUID,
@@ -65,11 +46,19 @@ async def create_customer(
         email=email,
         metadata={"organization_id": str(organization_id)},
     )
-    await _write_audit_log(
-        db,
+    ctx = CallContext(
         organization_id=organization_id,
+        user_id=None,
+        request_type="stripe_customer_create",
+        contains_pii=False,
+    )
+    await write_audit_log(
+        db,
+        ctx=ctx,
+        resource_type="subscription",
+        resource_id=None,
         action="stripe_customer_created",
-        event_metadata={"stripe_customer_id": customer.id, "email": email},
+        extra={"stripe_customer_id": customer.id, "email": email},
     )
     return customer
 
@@ -106,11 +95,19 @@ async def create_checkout_session(
         success_url=success_url,
         cancel_url=cancel_url,
     )
-    await _write_audit_log(
-        db,
+    ctx = CallContext(
         organization_id=organization_id,
+        user_id=None,
+        request_type="stripe_checkout_create",
+        contains_pii=False,
+    )
+    await write_audit_log(
+        db,
+        ctx=ctx,
+        resource_type="subscription",
+        resource_id=None,
         action="stripe_checkout_session_started",
-        event_metadata={
+        extra={
             "session_id": session.id,
             "plan": plan.value,
         },
