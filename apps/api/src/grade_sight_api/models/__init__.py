@@ -6,6 +6,7 @@ importing this module once.
 
 from .answer_key import AnswerKey
 from .assessment import Assessment, AssessmentStatus
+from .assessment_diagnosis import AssessmentDiagnosis
 from .assessment_page import AssessmentPage
 from .audit_log import AuditLog
 from .class_member import ClassMember
@@ -15,6 +16,7 @@ from .error_subcategory import ErrorSubcategory
 from .klass import Klass
 from .llm_call_log import LLMCallLog
 from .organization import Organization
+from .problem_observation import ProblemObservation
 from .student import Student
 from .student_profile import StudentProfile
 from .subscription import Plan, Subscription, SubscriptionStatus
@@ -24,6 +26,7 @@ from .user import User, UserRole
 __all__ = [
     "AnswerKey",
     "Assessment",
+    "AssessmentDiagnosis",
     "AssessmentPage",
     "AssessmentStatus",
     "AuditLog",
@@ -35,6 +38,7 @@ __all__ = [
     "LLMCallLog",
     "Organization",
     "Plan",
+    "ProblemObservation",
     "Student",
     "StudentProfile",
     "Subscription",

@@ -20,6 +20,7 @@ from ..db.base import Base
 from ..db.mixins import SoftDeleteMixin, TenantMixin, TimestampMixin
 
 if TYPE_CHECKING:
+    from .assessment_diagnosis import AssessmentDiagnosis
     from .assessment_page import AssessmentPage
 
 
@@ -64,5 +65,11 @@ class Assessment(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
         "AssessmentPage",
         back_populates="assessment",
         order_by="AssessmentPage.page_number",
+        lazy="select",
+    )
+    diagnosis: Mapped[AssessmentDiagnosis | None] = relationship(
+        "AssessmentDiagnosis",
+        back_populates="assessment",
+        uselist=False,
         lazy="select",
     )
