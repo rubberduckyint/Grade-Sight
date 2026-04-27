@@ -49,4 +49,29 @@ export interface AssessmentDetail {
   status: AssessmentStatus;
   uploaded_at: string;
   pages: AssessmentDetailPage[];
+  diagnosis: AssessmentDiagnosis | null;
+}
+
+export interface ProblemObservation {
+  id: string;
+  problem_number: number;
+  page_number: number;
+  student_answer: string;
+  correct_answer: string;
+  is_correct: boolean;
+  error_pattern_slug: string | null;
+  error_pattern_name: string | null;
+  error_category_slug: string | null;
+  error_description: string | null;
+  solution_steps: string | null;
+}
+
+export interface AssessmentDiagnosis {
+  id: string;
+  model: string;
+  overall_summary: string | null;
+  cost_usd: number;
+  latency_ms: number;
+  created_at: string;
+  problems: ProblemObservation[];
 }

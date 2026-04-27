@@ -61,3 +61,12 @@ export async function deleteAssessment(id: string): Promise<void> {
     throw new Error(`DELETE /api/assessments/${id} failed: ${response.status}`);
   }
 }
+
+export async function runDiagnostic(id: string): Promise<void> {
+  const response = await callApi(`/api/assessments/${id}/diagnose`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error(`POST /api/assessments/${id}/diagnose failed: ${response.status}`);
+  }
+}
