@@ -5,19 +5,19 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from scripts.seed_taxonomy import (
-    CATEGORIES,
-    PATTERNS,
-    SUBCATEGORIES,
-    seed,
-    validate,
-)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from grade_sight_api.models.error_category import ErrorCategory
 from grade_sight_api.models.error_pattern import ErrorPattern
 from grade_sight_api.models.error_subcategory import ErrorSubcategory
+from grade_sight_api.scripts.seed_taxonomy import (
+    CATEGORIES,
+    PATTERNS,
+    SUBCATEGORIES,
+    seed,
+    validate,
+)
 
 
 async def test_seed_runs_clean_on_empty_db(async_session: AsyncSession) -> None:
