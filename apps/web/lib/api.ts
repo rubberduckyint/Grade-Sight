@@ -1,14 +1,22 @@
+import "server-only";
+
 import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
 import type { UserResponse } from "@grade-sight/shared";
 
-export interface EntitlementResponse {
-  status: "trialing" | "active" | "past_due" | "canceled" | "incomplete" | null;
-  trial_ends_at: string | null;
-  current_period_end: string | null;
-  plan: "parent_monthly" | "teacher_monthly" | null;
-  is_entitled: boolean;
-}
+export type {
+  EntitlementResponse,
+  Student,
+  AssessmentStatus,
+  AssessmentListItem,
+  AssessmentUploadIntent,
+} from "./types";
+
+import type {
+  EntitlementResponse,
+  Student,
+  AssessmentListItem,
+} from "./types";
 
 async function authedFetch(path: string, init?: RequestInit): Promise<Response> {
   const { getToken } = await auth();
@@ -74,13 +82,6 @@ export async function createPortalSession(): Promise<string> {
 
 // ---- Students ----
 
-export interface Student {
-  id: string;
-  full_name: string;
-  date_of_birth: string | null;
-  created_at: string;
-}
-
 export async function fetchStudents(): Promise<Student[]> {
   const response = await authedFetch(`/api/students`, { method: "GET" });
   if (response.status === 401) return [];
@@ -89,33 +90,7 @@ export async function fetchStudents(): Promise<Student[]> {
   return body.students;
 }
 
-export async function createStudent(input: {
-  full_name: string;
-  date_of_birth?: string;
-}): Promise<Student> {
-  const response = await authedFetch(`/api/students`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!response.ok) {
-    throw new Error(`POST /api/students failed: ${response.status}`);
-  }
-  return (await response.json()) as Student;
-}
-
 // ---- Assessments ----
-
-export type AssessmentStatus = "pending" | "processing" | "completed" | "failed";
-
-export interface AssessmentListItem {
-  id: string;
-  student_id: string;
-  student_name: string;
-  original_filename: string;
-  status: AssessmentStatus;
-  uploaded_at: string;
-}
 
 export async function fetchAssessments(opts?: { limit?: number }): Promise<AssessmentListItem[]> {
   const limit = opts?.limit ?? 20;
@@ -124,26 +99,4 @@ export async function fetchAssessments(opts?: { limit?: number }): Promise<Asses
   if (!response.ok) throw new Error(`GET /api/assessments failed: ${response.status}`);
   const body = (await response.json()) as { assessments: AssessmentListItem[] };
   return body.assessments;
-}
-
-export interface AssessmentUploadIntent {
-  assessment_id: string;
-  upload_url: string;
-  key: string;
-}
-
-export async function createAssessmentForUpload(input: {
-  student_id: string;
-  original_filename: string;
-  content_type: string;
-}): Promise<AssessmentUploadIntent> {
-  const response = await authedFetch(`/api/assessments`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!response.ok) {
-    throw new Error(`POST /api/assessments failed: ${response.status}`);
-  }
-  return (await response.json()) as AssessmentUploadIntent;
 }

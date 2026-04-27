@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { Student } from "@/lib/api";
-import { createStudent } from "@/lib/api";
+import type { Student } from "@/lib/types";
+import { createStudent } from "@/lib/actions";
 
 export interface StudentPickerProps {
   students: Student[];

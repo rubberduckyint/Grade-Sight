@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { StudentPicker } from "@/components/student-picker";
-import type { Student } from "@/lib/api";
-import { createAssessmentForUpload } from "@/lib/api";
+import type { Student } from "@/lib/types";
+import { createAssessmentForUpload } from "@/lib/actions";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 

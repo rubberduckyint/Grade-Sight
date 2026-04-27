@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SectionEyebrow } from "@/components/section-eyebrow";
-import type { AssessmentListItem } from "@/lib/api";
+import type { AssessmentListItem } from "@/lib/types";
 
 const STATUS_LABEL: Record<AssessmentListItem["status"], string> = {
   pending: "Pending",

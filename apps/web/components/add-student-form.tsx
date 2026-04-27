@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { createStudent } from "@/lib/api";
+import { createStudent } from "@/lib/actions";
 
 export function AddStudentForm() {
   const router = useRouter();
