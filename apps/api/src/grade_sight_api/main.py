@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
 from .db import engine, get_session
+from .routers import assessments as assessments_router
 from .routers import billing as billing_router
 from .routers import me as me_router
 from .routers import students as students_router
@@ -32,6 +33,7 @@ app = FastAPI(title="Grade-Sight API", version="0.0.0", lifespan=lifespan)
 app.include_router(me_router.router)
 app.include_router(billing_router.router)
 app.include_router(students_router.router)
+app.include_router(assessments_router.router)
 app.include_router(stripe_webhook_router.router)
 
 
