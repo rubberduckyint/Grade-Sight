@@ -71,3 +71,79 @@ export async function createPortalSession(): Promise<string> {
   const body = (await response.json()) as { url: string };
   return body.url;
 }
+
+// ---- Students ----
+
+export interface Student {
+  id: string;
+  full_name: string;
+  date_of_birth: string | null;
+  created_at: string;
+}
+
+export async function fetchStudents(): Promise<Student[]> {
+  const response = await authedFetch(`/api/students`, { method: "GET" });
+  if (response.status === 401) return [];
+  if (!response.ok) throw new Error(`GET /api/students failed: ${response.status}`);
+  const body = (await response.json()) as { students: Student[] };
+  return body.students;
+}
+
+export async function createStudent(input: {
+  full_name: string;
+  date_of_birth?: string;
+}): Promise<Student> {
+  const response = await authedFetch(`/api/students`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(`POST /api/students failed: ${response.status}`);
+  }
+  return (await response.json()) as Student;
+}
+
+// ---- Assessments ----
+
+export type AssessmentStatus = "pending" | "processing" | "completed" | "failed";
+
+export interface AssessmentListItem {
+  id: string;
+  student_id: string;
+  student_name: string;
+  original_filename: string;
+  status: AssessmentStatus;
+  uploaded_at: string;
+}
+
+export async function fetchAssessments(opts?: { limit?: number }): Promise<AssessmentListItem[]> {
+  const limit = opts?.limit ?? 20;
+  const response = await authedFetch(`/api/assessments?limit=${limit}`, { method: "GET" });
+  if (response.status === 401) return [];
+  if (!response.ok) throw new Error(`GET /api/assessments failed: ${response.status}`);
+  const body = (await response.json()) as { assessments: AssessmentListItem[] };
+  return body.assessments;
+}
+
+export interface AssessmentUploadIntent {
+  assessment_id: string;
+  upload_url: string;
+  key: string;
+}
+
+export async function createAssessmentForUpload(input: {
+  student_id: string;
+  original_filename: string;
+  content_type: string;
+}): Promise<AssessmentUploadIntent> {
+  const response = await authedFetch(`/api/assessments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(`POST /api/assessments failed: ${response.status}`);
+  }
+  return (await response.json()) as AssessmentUploadIntent;
+}
