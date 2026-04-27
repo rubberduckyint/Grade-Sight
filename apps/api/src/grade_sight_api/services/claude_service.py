@@ -189,6 +189,8 @@ class ClaudeVisionResponse:
     tokens_input: int
     tokens_output: int
     model: str
+    tokens_cache_read: int | None = None
+    tokens_cache_creation: int | None = None
 
 
 def _build_vision_message(image: bytes | str, prompt: str) -> dict[str, Any]:
@@ -376,6 +378,9 @@ async def call_vision_multi(
     tokens_out = response.usage.output_tokens
     cost = compute_cost(model=model, tokens_input=tokens_in, tokens_output=tokens_out)
 
+    cache_read = getattr(response.usage, "cache_read_input_tokens", None)
+    cache_creation = getattr(response.usage, "cache_creation_input_tokens", None)
+
     await write_llm_call_log(
         db,
         ctx=ctx,
@@ -408,4 +413,6 @@ async def call_vision_multi(
         tokens_input=tokens_in,
         tokens_output=tokens_out,
         model=model,
+        tokens_cache_read=cache_read,
+        tokens_cache_creation=cache_creation,
     )

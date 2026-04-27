@@ -46,6 +46,9 @@ from .claude_service import ClaudeServiceError
 logger = logging.getLogger(__name__)
 
 
+# Bump PROMPT_VERSION when _build_system_prompt or the output JSON schema
+# changes substantively. The DB stamps this on every diagnosis row so future
+# eval analyses can bucket results by prompt era. v1 = initial release.
 PROMPT_VERSION = "v1"
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 4096
@@ -170,6 +173,16 @@ async def diagnose_assessment(
     user: User,
     db: AsyncSession,
 ) -> AssessmentDiagnosis:
+    # Engine v1 requires an org-scoped account. CallContext.organization_id is
+    # non-nullable and the diagnostic flow stamps every audit_log + diagnosis
+    # row with an org_id. Parent-mode (org_id=None) engine support is a
+    # follow-up spec — see CLAUDE.md §3 on tenancy.
+    if user.organization_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user is not in an organization",
+        )
+
     # 1. Load assessment + verify ownership + status.
     asmt_result = await db.execute(
         select(Assessment).where(
@@ -208,12 +221,6 @@ async def diagnose_assessment(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="assessment has no pages",
-        )
-
-    if user.organization_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="user is not in an organization",
         )
 
     # 3. Build prompt + presigned URLs.
@@ -286,6 +293,10 @@ async def diagnose_assessment(
     )
 
     # 8. Persist diagnosis + observations.
+    # Caller MUST wrap diagnose_assessment in one outer transaction so the
+    # diagnosis + N observations + final status flush are atomic. Each flush
+    # below stages SQL but does not commit; the endpoint's session boundary
+    # is what makes the whole pipeline all-or-nothing.
     diagnosis = AssessmentDiagnosis(
         assessment_id=assessment.id,
         organization_id=user.organization_id,
@@ -293,6 +304,8 @@ async def diagnose_assessment(
         prompt_version=PROMPT_VERSION,
         tokens_input=response.tokens_input,
         tokens_output=response.tokens_output,
+        tokens_cache_read=response.tokens_cache_read,
+        tokens_cache_creation=response.tokens_cache_creation,
         cost_usd=cost,
         latency_ms=latency_ms,
         overall_summary=engine_output.overall_summary,
