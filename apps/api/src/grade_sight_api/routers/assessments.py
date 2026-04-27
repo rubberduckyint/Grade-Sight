@@ -92,7 +92,8 @@ async def create_assessment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="content_type must be an image/* type",
         )
-    if not payload.original_filename.strip():
+    filename = payload.original_filename.strip()
+    if not filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="original_filename is required",
@@ -122,13 +123,13 @@ async def create_assessment(
         organization_id=user.organization_id,
         uploaded_by_user_id=user.id,
         s3_url="",  # filled in below once we know the assessment_id
-        original_filename=payload.original_filename,
+        original_filename=filename,
         status=AssessmentStatus.pending,
     )
     db.add(assessment)
     await db.flush()
 
-    ext = _safe_extension(payload.original_filename)
+    ext = _safe_extension(filename)
     key = f"assessments/{user.organization_id}/{student.id}/{assessment.id}.{ext}"
     assessment.s3_url = key
     await db.flush()
