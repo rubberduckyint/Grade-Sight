@@ -1,5 +1,8 @@
+import Link from "next/link";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { DeleteAssessmentButton } from "@/components/delete-assessment-button";
 import { SectionEyebrow } from "@/components/section-eyebrow";
 import type { AssessmentListItem } from "@/lib/types";
 
@@ -34,16 +37,32 @@ export function RecentAssessmentsList({ assessments }: RecentAssessmentsListProp
         <SectionEyebrow>Recent assessments</SectionEyebrow>
         <ul className="mt-4 divide-y divide-rule-soft">
           {assessments.map((a) => (
-            <li key={a.id} className="flex items-center justify-between py-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-base text-ink">{a.original_filename}</p>
-                <p className="text-sm text-ink-soft">
-                  {a.student_name} · {timeAgo(a.uploaded_at)}
-                </p>
-              </div>
-              <Badge variant="secondary" className="font-mono uppercase tracking-[0.12em]">
+            <li key={a.id} className="flex items-center gap-4 py-3">
+              <Link
+                href={`/assessments/${a.id}`}
+                className="flex flex-1 items-center gap-4"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- presigned URL, expires hourly */}
+                <img
+                  src={a.first_page_thumbnail_url}
+                  alt={`First page of ${a.student_name}'s assessment`}
+                  className="size-16 shrink-0 rounded-[var(--radius-sm)] border border-rule-soft object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-base text-ink">{a.student_name}</p>
+                  <p className="font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
+                    {a.page_count}{" "}
+                    {a.page_count === 1 ? "page" : "pages"} · {timeAgo(a.uploaded_at)}
+                  </p>
+                </div>
+              </Link>
+              <Badge
+                variant="secondary"
+                className="font-mono uppercase tracking-[0.12em]"
+              >
                 {STATUS_LABEL[a.status]}
               </Badge>
+              <DeleteAssessmentButton id={a.id} />
             </li>
           ))}
         </ul>
