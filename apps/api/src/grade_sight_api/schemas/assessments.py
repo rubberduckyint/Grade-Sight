@@ -51,6 +51,30 @@ class AssessmentDetailPage(BaseModel):
     view_url: str
 
 
+class ProblemObservationResponse(BaseModel):
+    id: UUID
+    problem_number: int
+    page_number: int
+    student_answer: str
+    correct_answer: str
+    is_correct: bool
+    error_pattern_slug: str | None
+    error_pattern_name: str | None
+    error_category_slug: str | None
+    error_description: str | None
+    solution_steps: str | None
+
+
+class AssessmentDiagnosisResponse(BaseModel):
+    id: UUID
+    model: str
+    overall_summary: str | None
+    cost_usd: float
+    latency_ms: int
+    created_at: datetime
+    problems: list[ProblemObservationResponse]
+
+
 class AssessmentDetailResponse(BaseModel):
     id: UUID
     student_id: UUID
@@ -58,3 +82,4 @@ class AssessmentDetailResponse(BaseModel):
     status: AssessmentStatus
     uploaded_at: datetime
     pages: list[AssessmentDetailPage]
+    diagnosis: AssessmentDiagnosisResponse | None

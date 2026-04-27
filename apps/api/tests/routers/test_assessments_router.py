@@ -8,7 +8,9 @@ DELETE /api/assessments/{id} — 3 tests for soft-delete / 404 / 403.
 
 from __future__ import annotations
 
+import json
 from contextlib import AbstractContextManager
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -497,3 +499,170 @@ async def test_delete_403_cross_org(async_session: AsyncSession) -> None:
         app.dependency_overrides.clear()
 
     assert r.status_code == 403
+
+
+# ---- POST /api/assessments/{id}/diagnose ----
+
+
+async def test_post_diagnose_endpoint(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    user = await _seed_user(async_session)
+    student = await _seed_student(async_session, user)
+    asmt = Assessment(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        uploaded_by_user_id=user.id,
+        status=AssessmentStatus.pending,
+    )
+    async_session.add(asmt)
+    await async_session.flush()
+    async_session.add(
+        AssessmentPage(
+            assessment_id=asmt.id,
+            page_number=1,
+            s3_url=f"k/{asmt.id}/page-001.png",
+            original_filename="p1.png",
+            content_type="image/png",
+            organization_id=user.organization_id,
+        )
+    )
+    await async_session.flush()
+
+    pattern = seed_minimal_taxonomy["pattern"]
+    fake_text = json.dumps(
+        {
+            "overall_summary": "1 of 1 wrong.",
+            "problems": [
+                {
+                    "problem_number": 1,
+                    "page_number": 1,
+                    "student_answer": "x = 5",
+                    "correct_answer": "x = 7",
+                    "is_correct": False,
+                    "error_pattern_slug": pattern.slug,
+                    "error_description": "sign error",
+                    "solution_steps": "step 1\nstep 2",
+                }
+            ],
+        }
+    )
+    from grade_sight_api.services.claude_service import ClaudeVisionResponse
+    fake_response = ClaudeVisionResponse(
+        text=fake_text, tokens_input=10, tokens_output=5,
+        model="claude-sonnet-4-6",
+    )
+
+    _override_deps(user, async_session)
+    try:
+        with patch(
+            "grade_sight_api.services.engine_service.claude_service.call_vision_multi",
+            new=AsyncMock(return_value=fake_response),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.post(
+                    f"/api/assessments/{asmt.id}/diagnose",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["model"] == "claude-sonnet-4-6"
+    assert body["overall_summary"] == "1 of 1 wrong."
+    assert len(body["problems"]) == 1
+    p = body["problems"][0]
+    assert p["is_correct"] is False
+    assert p["error_pattern_slug"] == pattern.slug
+    assert p["error_pattern_name"] == pattern.name
+    assert p["error_category_slug"] == "execution"
+
+
+# ---- GET /api/assessments/{id} with diagnosis ----
+
+
+async def test_detail_includes_diagnosis_when_completed(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    from decimal import Decimal
+
+    from grade_sight_api.models.assessment_diagnosis import AssessmentDiagnosis
+    from grade_sight_api.models.problem_observation import ProblemObservation
+
+    user = await _seed_user(async_session)
+    student = await _seed_student(async_session, user, name="Ada")
+    asmt = Assessment(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        uploaded_by_user_id=user.id,
+        status=AssessmentStatus.completed,
+    )
+    async_session.add(asmt)
+    await async_session.flush()
+    async_session.add(
+        AssessmentPage(
+            assessment_id=asmt.id,
+            page_number=1,
+            s3_url=f"k/{asmt.id}/page-001.png",
+            original_filename="p1.png",
+            content_type="image/png",
+            organization_id=user.organization_id,
+        )
+    )
+    diag = AssessmentDiagnosis(
+        assessment_id=asmt.id,
+        organization_id=user.organization_id,
+        model="claude-sonnet-4-6",
+        prompt_version="v1",
+        tokens_input=100,
+        tokens_output=20,
+        cost_usd=Decimal("0.0123"),
+        latency_ms=12345,
+        overall_summary="Test summary.",
+    )
+    async_session.add(diag)
+    await async_session.flush()
+    pattern = seed_minimal_taxonomy["pattern"]
+    async_session.add(
+        ProblemObservation(
+            diagnosis_id=diag.id,
+            organization_id=user.organization_id,
+            problem_number=1,
+            page_number=1,
+            student_answer="x = 5",
+            correct_answer="x = 7",
+            is_correct=False,
+            error_pattern_id=pattern.id,
+            error_description="sign error",
+            solution_steps="steps",
+        )
+    )
+    await async_session.flush()
+
+    _override_deps(user, async_session)
+    fake_get_url = "https://r2.example/get?sig=abc"
+    try:
+        with patch(
+            "grade_sight_api.routers.assessments.storage_service.get_download_url",
+            new=AsyncMock(return_value=fake_get_url),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    f"/api/assessments/{asmt.id}",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["diagnosis"] is not None
+    assert body["diagnosis"]["overall_summary"] == "Test summary."
+    assert len(body["diagnosis"]["problems"]) == 1
+    p = body["diagnosis"]["problems"][0]
+    assert p["error_pattern_slug"] == pattern.slug

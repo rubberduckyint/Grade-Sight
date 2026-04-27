@@ -28,7 +28,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..auth.dependencies import get_current_user
 from ..db import get_session
 from ..models.assessment import Assessment, AssessmentStatus
+from ..models.assessment_diagnosis import AssessmentDiagnosis
 from ..models.assessment_page import AssessmentPage
+from ..models.error_category import ErrorCategory
+from ..models.error_pattern import ErrorPattern
+from ..models.error_subcategory import ErrorSubcategory
+from ..models.problem_observation import ProblemObservation
 from ..models.student import Student
 from ..models.user import User
 from ..schemas.assessments import (
@@ -36,11 +41,13 @@ from ..schemas.assessments import (
     AssessmentCreateResponse,
     AssessmentDetailPage,
     AssessmentDetailResponse,
+    AssessmentDiagnosisResponse,
     AssessmentListItem,
     AssessmentListResponse,
     AssessmentPageUploadIntent,
+    ProblemObservationResponse,
 )
-from ..services import storage_service
+from ..services import engine_service, storage_service
 from ..services.call_context import CallContext
 
 MAX_PAGES_PER_ASSESSMENT = 20
@@ -52,6 +59,79 @@ def _safe_extension(filename: str) -> str:
     """Lowercase file extension without the dot, defaulting to 'bin'."""
     suffix = Path(filename).suffix.lstrip(".").lower()
     return suffix or "bin"
+
+
+async def _build_diagnosis_response(
+    db: AsyncSession, diagnosis_id: UUID
+) -> AssessmentDiagnosisResponse:
+    """Load a diagnosis with its observations and joined error_pattern + category info.
+
+    Returns the API response shape with slugs/names denormalized for the frontend.
+    """
+    diag_result = await db.execute(
+        select(AssessmentDiagnosis).where(
+            AssessmentDiagnosis.id == diagnosis_id,
+            AssessmentDiagnosis.deleted_at.is_(None),
+        )
+    )
+    diagnosis = diag_result.scalar_one()
+
+    obs_result = await db.execute(
+        select(
+            ProblemObservation,
+            ErrorPattern.slug.label("pattern_slug"),
+            ErrorPattern.name.label("pattern_name"),
+            ErrorCategory.slug.label("category_slug"),
+        )
+        .join(
+            ErrorPattern,
+            ProblemObservation.error_pattern_id == ErrorPattern.id,
+            isouter=True,
+        )
+        .join(
+            ErrorSubcategory,
+            ErrorPattern.subcategory_id == ErrorSubcategory.id,
+            isouter=True,
+        )
+        .join(
+            ErrorCategory,
+            ErrorSubcategory.category_id == ErrorCategory.id,
+            isouter=True,
+        )
+        .where(
+            ProblemObservation.diagnosis_id == diagnosis.id,
+            ProblemObservation.deleted_at.is_(None),
+        )
+        .order_by(ProblemObservation.problem_number)
+    )
+
+    problems: list[ProblemObservationResponse] = []
+    for obs, pattern_slug, pattern_name, category_slug in obs_result.all():
+        problems.append(
+            ProblemObservationResponse(
+                id=obs.id,
+                problem_number=obs.problem_number,
+                page_number=obs.page_number,
+                student_answer=obs.student_answer,
+                correct_answer=obs.correct_answer,
+                is_correct=obs.is_correct,
+                error_pattern_slug=pattern_slug,
+                error_pattern_name=pattern_name,
+                error_category_slug=category_slug,
+                error_description=obs.error_description,
+                solution_steps=obs.solution_steps,
+            )
+        )
+
+    return AssessmentDiagnosisResponse(
+        id=diagnosis.id,
+        model=diagnosis.model,
+        overall_summary=diagnosis.overall_summary,
+        cost_usd=float(diagnosis.cost_usd),
+        latency_ms=diagnosis.latency_ms,
+        created_at=diagnosis.created_at,
+        problems=problems,
+    )
 
 
 @router.get("/api/assessments", response_model=AssessmentListResponse)
@@ -324,6 +404,17 @@ async def get_assessment_detail(
             )
         )
 
+    diagnosis_payload: AssessmentDiagnosisResponse | None = None
+    diag_result = await db.execute(
+        select(AssessmentDiagnosis.id).where(
+            AssessmentDiagnosis.assessment_id == assessment.id,
+            AssessmentDiagnosis.deleted_at.is_(None),
+        )
+    )
+    diagnosis_id = diag_result.scalar_one_or_none()
+    if diagnosis_id is not None:
+        diagnosis_payload = await _build_diagnosis_response(db, diagnosis_id)
+
     return AssessmentDetailResponse(
         id=assessment.id,
         student_id=assessment.student_id,
@@ -331,6 +422,7 @@ async def get_assessment_detail(
         status=assessment.status,
         uploaded_at=assessment.uploaded_at,
         pages=detail_pages,
+        diagnosis=diagnosis_payload,
     )
 
 
@@ -363,3 +455,28 @@ async def delete_assessment(
         )
     assessment.deleted_at = datetime.now(UTC).replace(tzinfo=None)
     await db.flush()
+
+
+@router.post(
+    "/api/assessments/{assessment_id}/diagnose",
+    response_model=AssessmentDiagnosisResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def diagnose_assessment_endpoint(
+    assessment_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AssessmentDiagnosisResponse:
+    """Run the diagnostic engine against an assessment. Sync ~30s wait.
+
+    Returns the full diagnosis + observations on success. Status codes:
+    - 200 OK on success
+    - 403 if cross-org
+    - 404 if assessment not found
+    - 409 if already diagnosed (status != pending)
+    - 500 on engine failure
+    """
+    diagnosis = await engine_service.diagnose_assessment(
+        assessment_id=assessment_id, user=user, db=db,
+    )
+    return await _build_diagnosis_response(db, diagnosis.id)
