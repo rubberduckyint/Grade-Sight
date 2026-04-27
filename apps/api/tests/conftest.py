@@ -25,6 +25,9 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from grade_sight_api.config import settings
+from grade_sight_api.models.error_category import ErrorCategory
+from grade_sight_api.models.error_pattern import ErrorPattern
+from grade_sight_api.models.error_subcategory import ErrorSubcategory
 
 
 def _test_database_url() -> str:
@@ -80,3 +83,40 @@ async def seed_user(async_session: AsyncSession) -> None:
     """Stub factory — no-op until a test needs it."""
     _ = async_session
     return None
+
+
+@pytest.fixture
+async def seed_minimal_taxonomy(async_session: AsyncSession) -> dict[str, object]:
+    """Seed 1 category + 1 subcategory + 1 pattern with known slugs.
+
+    Used by engine_service tests that need a taxonomy row to look up by
+    slug. Production seed (4/16/29) lives in apps/api/scripts/.
+    """
+    cat = ErrorCategory(
+        slug="execution",
+        name="Execution",
+        definition="Errors during the mechanical steps of solving.",
+        distinguishing_marker="Visible mistake in the math itself.",
+        severity_rank=2,
+    )
+    async_session.add(cat)
+    await async_session.flush()
+    sub = ErrorSubcategory(
+        slug="execution-arithmetic",
+        category_id=cat.id,
+        name="Arithmetic",
+        definition="Arithmetic mistakes during a problem's solution.",
+    )
+    async_session.add(sub)
+    await async_session.flush()
+    pat = ErrorPattern(
+        slug="sign-error-distribution",
+        subcategory_id=sub.id,
+        name="Sign error in distribution",
+        description="Lost a sign while distributing a coefficient.",
+        canonical_example="-2(x-4)=6 -> -2x-8=6 (incorrect)",
+        severity_hint="medium",
+    )
+    async_session.add(pat)
+    await async_session.flush()
+    return {"category": cat, "subcategory": sub, "pattern": pat}
