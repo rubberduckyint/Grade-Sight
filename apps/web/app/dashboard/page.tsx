@@ -1,11 +1,15 @@
 import { redirect } from "next/navigation";
-import { createCheckoutSession, fetchEntitlement, fetchMe } from "@/lib/api";
+import Link from "next/link";
+
+import { createCheckoutSession, fetchAssessments, fetchEntitlement, fetchMe } from "@/lib/api";
 import { TrialBanner } from "@/components/trial-banner";
 import { AppShell } from "@/components/app-shell";
 import { PageContainer } from "@/components/page-container";
 import { SerifHeadline } from "@/components/serif-headline";
 import { SectionEyebrow } from "@/components/section-eyebrow";
 import { EmptyState } from "@/components/empty-state";
+import { RecentAssessmentsList } from "@/components/recent-assessments-list";
+import { Button } from "@/components/ui/button";
 
 async function handleCheckout() {
   "use server";
@@ -27,7 +31,11 @@ function greeting(now: Date): string {
 }
 
 export default async function DashboardPage() {
-  const [user, entitlement] = await Promise.all([fetchMe(), fetchEntitlement()]);
+  const [user, entitlement, assessments] = await Promise.all([
+    fetchMe(),
+    fetchEntitlement(),
+    fetchAssessments({ limit: 10 }),
+  ]);
   if (!user) redirect("/sign-in");
 
   const displayName =
@@ -63,13 +71,20 @@ export default async function DashboardPage() {
             {greeting(now)}, {user.first_name || displayName}.
           </SerifHeadline>
         </div>
-        <div className="mt-12">
+        <div className="mt-10 mb-12">
+          <Button asChild size="lg">
+            <Link href="/upload">Upload assessment</Link>
+          </Button>
+        </div>
+        {assessments.length === 0 ? (
           <EmptyState
-            eyebrow={<SectionEyebrow>Coming soon</SectionEyebrow>}
+            eyebrow={<SectionEyebrow>No uploads yet</SectionEyebrow>}
             title="No assessments yet."
             body="When you're ready, upload a photo of your student's quiz or test and we'll tell you what we saw."
           />
-        </div>
+        ) : (
+          <RecentAssessmentsList assessments={assessments} />
+        )}
       </PageContainer>
     </AppShell>
   );
