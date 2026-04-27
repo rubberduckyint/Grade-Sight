@@ -6,6 +6,7 @@ importing this module once.
 
 from .answer_key import AnswerKey
 from .assessment import Assessment, AssessmentStatus
+from .assessment_page import AssessmentPage
 from .audit_log import AuditLog
 from .class_member import ClassMember
 from .error_category import ErrorCategory
@@ -23,6 +24,7 @@ from .user import User, UserRole
 __all__ = [
     "AnswerKey",
     "Assessment",
+    "AssessmentPage",
     "AssessmentStatus",
     "AuditLog",
     "ClassMember",

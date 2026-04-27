@@ -8,14 +8,18 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import Base
 from ..db.mixins import SoftDeleteMixin, TenantMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from .assessment_page import AssessmentPage
 
 
 class AssessmentStatus(enum.StrEnum):
@@ -55,4 +59,11 @@ class Assessment(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
     uploaded_at: Mapped[datetime] = mapped_column(
         nullable=False,
         server_default=text("now()"),
+    )
+
+    pages: Mapped[list[AssessmentPage]] = relationship(
+        "AssessmentPage",
+        primaryjoin="Assessment.id == AssessmentPage.assessment_id",
+        order_by="AssessmentPage.page_number",
+        lazy="selectin",
     )
