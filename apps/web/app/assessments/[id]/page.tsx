@@ -52,17 +52,21 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
           </SerifHeadline>
           <DeleteAssessmentButton id={detail.id} redirectTo="/dashboard" />
         </div>
-        <p className="mb-10 font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
-          Uploaded {timeAgo(detail.uploaded_at)} ·{" "}
+        <div className="mb-10 flex flex-wrap items-center gap-x-2 font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
+          <span>Uploaded {timeAgo(detail.uploaded_at)}</span>
+          <span aria-hidden="true">·</span>
           <Badge
             variant="secondary"
             className="font-mono uppercase tracking-[0.12em]"
           >
             {STATUS_LABEL[detail.status]}
-          </Badge>{" "}
-          · {detail.pages.length}{" "}
-          {detail.pages.length === 1 ? "page" : "pages"}
-        </p>
+          </Badge>
+          <span aria-hidden="true">·</span>
+          <span>
+            {detail.pages.length}{" "}
+            {detail.pages.length === 1 ? "page" : "pages"}
+          </span>
+        </div>
 
         <ul className="space-y-6">
           {detail.pages.map((p) => (
