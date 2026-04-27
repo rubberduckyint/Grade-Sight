@@ -2,7 +2,9 @@ import { notFound, redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { DeleteAssessmentButton } from "@/components/delete-assessment-button";
+import { DiagnosisDisplay } from "@/components/diagnosis-display";
 import { PageContainer } from "@/components/page-container";
+import { RunDiagnosticButton } from "@/components/run-diagnostic-button";
 import { SectionEyebrow } from "@/components/section-eyebrow";
 import { SerifHeadline } from "@/components/serif-headline";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +69,45 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
             {detail.pages.length === 1 ? "page" : "pages"}
           </span>
         </div>
+
+        {/* Diagnostic section */}
+        {detail.status === "pending" && (
+          <div className="my-12 rounded-[var(--radius-sm)] border border-rule bg-paper-soft p-8 text-center">
+            <SerifHeadline level="section" as="h2">
+              Run diagnostic
+            </SerifHeadline>
+            <p className="mt-2 text-base text-ink-soft">
+              Grade-Sight will analyze each problem on this assessment,
+              identify error patterns, and provide step-by-step solutions.
+            </p>
+            <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
+              Takes about 30 seconds
+            </p>
+            <div className="mt-6 flex justify-center">
+              <RunDiagnosticButton id={detail.id} />
+            </div>
+          </div>
+        )}
+        {detail.status === "processing" && (
+          <div className="my-12 rounded-[var(--radius-sm)] border border-rule bg-paper-soft p-8 text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
+              Analyzing — about 30 seconds…
+            </p>
+          </div>
+        )}
+        {detail.status === "completed" && detail.diagnosis && (
+          <DiagnosisDisplay diagnosis={detail.diagnosis} />
+        )}
+        {detail.status === "failed" && (
+          <div className="my-12 rounded-[var(--radius-sm)] border border-mark bg-paper-soft p-8 text-center">
+            <p className="text-base text-mark">
+              Something went wrong analyzing this assessment.
+            </p>
+            <div className="mt-4 flex justify-center">
+              <RunDiagnosticButton id={detail.id} />
+            </div>
+          </div>
+        )}
 
         <ul className="space-y-6">
           {detail.pages.map((p) => (
