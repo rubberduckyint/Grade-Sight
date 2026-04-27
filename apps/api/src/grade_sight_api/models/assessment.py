@@ -1,7 +1,8 @@
-"""Assessment model — uploaded graded work.
+"""Assessment model — uploaded graded work, owns N AssessmentPage rows.
 
-Status enum drives the async diagnostic pipeline. s3_url + original_filename
-locate the uploaded image. answer_key_id optional (can be uploaded later).
+Status enum drives the async diagnostic pipeline. Pages live in the
+assessment_pages table (relationship .pages, ordered by page_number).
+answer_key_id optional.
 """
 
 from __future__ import annotations
@@ -49,8 +50,6 @@ class Assessment(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    s3_url: Mapped[str] = mapped_column(nullable=False)
-    original_filename: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[AssessmentStatus] = mapped_column(
         SAEnum(AssessmentStatus, name="assessment_status"),
         nullable=False,
@@ -63,7 +62,7 @@ class Assessment(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
 
     pages: Mapped[list[AssessmentPage]] = relationship(
         "AssessmentPage",
-        primaryjoin="Assessment.id == AssessmentPage.assessment_id",
+        back_populates="assessment",
         order_by="AssessmentPage.page_number",
         lazy="selectin",
     )

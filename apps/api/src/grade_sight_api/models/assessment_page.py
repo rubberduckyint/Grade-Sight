@@ -6,13 +6,17 @@ ordering is 1-indexed; (assessment_id, page_number) is unique.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import ForeignKey, Index, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import Base
 from ..db.mixins import SoftDeleteMixin, TenantMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from .assessment import Assessment
 
 
 class AssessmentPage(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
@@ -35,3 +39,9 @@ class AssessmentPage(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
     s3_url: Mapped[str] = mapped_column(nullable=False)
     original_filename: Mapped[str] = mapped_column(nullable=False)
     content_type: Mapped[str] = mapped_column(nullable=False)
+
+    assessment: Mapped[Assessment] = relationship(
+        "Assessment",
+        back_populates="pages",
+        lazy="select",
+    )

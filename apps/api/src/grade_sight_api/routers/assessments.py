@@ -1,31 +1,48 @@
-"""Assessments router — list and create assessments for the authenticated user's org.
+"""Assessments router — list, create, detail, delete.
 
-POST /api/assessments creates the assessment row in `pending` status AND returns
-a presigned R2 PUT URL the browser uses to upload the file directly. Single
-endpoint by design (see spec).
+POST /api/assessments creates the assessment + N AssessmentPage rows in one
+transaction and returns N presigned PUT URLs. Browser uploads file bytes
+directly to R2 (FastAPI not in the upload path).
+
+GET /api/assessments returns recent assessments with first-page thumbnail
++ page count.
+
+GET /api/assessments/{id} returns full detail with one presigned GET URL
+per page.
+
+DELETE /api/assessments/{id} soft-deletes the assessment.
+
+All endpoints tenant-scoped via user.organization_id.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth.dependencies import get_current_user
 from ..db import get_session
 from ..models.assessment import Assessment, AssessmentStatus
+from ..models.assessment_page import AssessmentPage
 from ..models.student import Student
 from ..models.user import User
 from ..schemas.assessments import (
     AssessmentCreateRequest,
     AssessmentCreateResponse,
+    AssessmentDetailPage,
+    AssessmentDetailResponse,
     AssessmentListItem,
     AssessmentListResponse,
+    AssessmentPageUploadIntent,
 )
 from ..services import storage_service
 from ..services.call_context import CallContext
+
+MAX_PAGES_PER_ASSESSMENT = 20
 
 router = APIRouter()
 
@@ -42,13 +59,50 @@ async def list_assessments(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> AssessmentListResponse:
-    """List recent assessments for the user's org, joined with student name."""
+    """List recent assessments + first-page thumbnail URL + page count."""
     if user.organization_id is None:
         return AssessmentListResponse(assessments=[])
 
+    page_count_subq = (
+        select(
+            AssessmentPage.assessment_id.label("assessment_id"),
+            func.count(AssessmentPage.id).label("page_count"),
+        )
+        .where(AssessmentPage.deleted_at.is_(None))
+        .group_by(AssessmentPage.assessment_id)
+        .subquery()
+    )
+
+    first_page_subq = (
+        select(
+            AssessmentPage.assessment_id.label("assessment_id"),
+            AssessmentPage.s3_url.label("first_page_key"),
+        )
+        .where(
+            AssessmentPage.page_number == 1,
+            AssessmentPage.deleted_at.is_(None),
+        )
+        .subquery()
+    )
+
     result = await db.execute(
-        select(Assessment, Student.full_name)
+        select(
+            Assessment,
+            Student.full_name,
+            page_count_subq.c.page_count,
+            first_page_subq.c.first_page_key,
+        )
         .join(Student, Assessment.student_id == Student.id)
+        .join(
+            page_count_subq,
+            Assessment.id == page_count_subq.c.assessment_id,
+            isouter=True,
+        )
+        .join(
+            first_page_subq,
+            Assessment.id == first_page_subq.c.assessment_id,
+            isouter=True,
+        )
         .where(
             Assessment.organization_id == user.organization_id,
             Assessment.deleted_at.is_(None),
@@ -56,14 +110,31 @@ async def list_assessments(
         .order_by(Assessment.uploaded_at.desc())
         .limit(limit)
     )
+
     items: list[AssessmentListItem] = []
-    for assessment, student_name in result.all():
+    ctx = CallContext(
+        organization_id=user.organization_id,
+        user_id=user.id,
+        request_type="assessment_list_thumbnails",
+        contains_pii=False,
+        audit_reason="render dashboard recent list thumbnails",
+    )
+    for assessment, student_name, page_count, first_page_key in result.all():
+        if first_page_key is None:
+            # Skip rows that somehow have no page (shouldn't happen post-migration).
+            continue
+        thumb_url = await storage_service.get_download_url(
+            ctx=ctx,
+            key=first_page_key,
+            db=db,
+        )
         items.append(
             AssessmentListItem(
                 id=assessment.id,
                 student_id=assessment.student_id,
                 student_name=student_name,
-                original_filename=assessment.original_filename,
+                page_count=int(page_count or 0),
+                first_page_thumbnail_url=thumb_url,
                 status=assessment.status,
                 uploaded_at=assessment.uploaded_at,
             )
@@ -81,35 +152,46 @@ async def create_assessment(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> AssessmentCreateResponse:
-    """Create a pending assessment row and return a presigned R2 PUT URL."""
+    """Create a pending assessment with N pages, return N presigned PUT URLs."""
     if user.organization_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User has no organization",
-        )
-    if not payload.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="content_type must be an image/* type",
-        )
-    filename = payload.original_filename.strip()
-    if not filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="original_filename is required",
+            detail="user is not in an organization",
         )
 
-    # Look up the student and verify it belongs to the user's org
-    result = await db.execute(
+    if not payload.files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="files is required",
+        )
+    if len(payload.files) > MAX_PAGES_PER_ASSESSMENT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"max {MAX_PAGES_PER_ASSESSMENT} pages per assessment",
+        )
+    for f in payload.files:
+        if not f.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="content_type must be image/*",
+            )
+        if not f.filename.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="filename is required",
+            )
+
+    student_result = await db.execute(
         select(Student).where(
             Student.id == payload.student_id,
             Student.deleted_at.is_(None),
         )
     )
-    student = result.scalar_one_or_none()
+    student = student_result.scalar_one_or_none()
     if student is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="student not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="student not found",
         )
     if student.organization_id != user.organization_id:
         raise HTTPException(
@@ -117,24 +199,15 @@ async def create_assessment(
             detail="student does not belong to your organization",
         )
 
-    # Insert the assessment row with a generated R2 key
     assessment = Assessment(
         student_id=student.id,
         organization_id=user.organization_id,
         uploaded_by_user_id=user.id,
-        s3_url="",  # filled in below once we know the assessment_id
-        original_filename=filename,
         status=AssessmentStatus.pending,
     )
     db.add(assessment)
     await db.flush()
 
-    ext = _safe_extension(filename)
-    key = f"assessments/{user.organization_id}/{student.id}/{assessment.id}.{ext}"
-    assessment.s3_url = key
-    await db.flush()
-
-    # Generate the presigned URL via the service layer (writes audit_log)
     ctx = CallContext(
         organization_id=user.organization_id,
         user_id=user.id,
@@ -142,15 +215,146 @@ async def create_assessment(
         contains_pii=True,
         audit_reason="upload student assessment image",
     )
-    upload_url = await storage_service.get_upload_url(
-        ctx=ctx,
-        key=key,
-        content_type=payload.content_type,
-        db=db,
-    )
+
+    intents: list[AssessmentPageUploadIntent] = []
+    for index, f in enumerate(payload.files, start=1):
+        filename = f.filename.strip()
+        ext = _safe_extension(filename)
+        key = (
+            f"assessments/{user.organization_id}/{student.id}/"
+            f"{assessment.id}/page-{index:03d}.{ext}"
+        )
+        page = AssessmentPage(
+            assessment_id=assessment.id,
+            page_number=index,
+            s3_url=key,
+            original_filename=filename,
+            content_type=f.content_type,
+            organization_id=user.organization_id,
+        )
+        db.add(page)
+        await db.flush()
+        upload_url = await storage_service.get_upload_url(
+            ctx=ctx,
+            key=key,
+            content_type=f.content_type,
+            db=db,
+        )
+        intents.append(
+            AssessmentPageUploadIntent(
+                page_number=index,
+                key=key,
+                upload_url=upload_url,
+            )
+        )
 
     return AssessmentCreateResponse(
         assessment_id=assessment.id,
-        upload_url=upload_url,
-        key=key,
+        pages=intents,
     )
+
+
+@router.get(
+    "/api/assessments/{assessment_id}",
+    response_model=AssessmentDetailResponse,
+)
+async def get_assessment_detail(
+    assessment_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> AssessmentDetailResponse:
+    """Full detail: student name, status, all pages with presigned view URLs."""
+    result = await db.execute(
+        select(Assessment, Student.full_name)
+        .join(Student, Assessment.student_id == Student.id)
+        .where(
+            Assessment.id == assessment_id,
+            Assessment.deleted_at.is_(None),
+        )
+    )
+    row = result.one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="assessment not found",
+        )
+    assessment, student_name = row
+    if assessment.organization_id != user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="assessment does not belong to your organization",
+        )
+
+    pages_result = await db.execute(
+        select(AssessmentPage)
+        .where(
+            AssessmentPage.assessment_id == assessment.id,
+            AssessmentPage.deleted_at.is_(None),
+        )
+        .order_by(AssessmentPage.page_number)
+    )
+    pages = pages_result.scalars().all()
+
+    ctx = CallContext(
+        organization_id=user.organization_id,
+        user_id=user.id,
+        request_type="assessment_detail_view",
+        contains_pii=True,
+        audit_reason="render assessment detail page",
+    )
+    detail_pages: list[AssessmentDetailPage] = []
+    for p in pages:
+        view_url = await storage_service.get_download_url(
+            ctx=ctx,
+            key=p.s3_url,
+            db=db,
+        )
+        detail_pages.append(
+            AssessmentDetailPage(
+                page_number=p.page_number,
+                original_filename=p.original_filename,
+                view_url=view_url,
+            )
+        )
+
+    return AssessmentDetailResponse(
+        id=assessment.id,
+        student_id=assessment.student_id,
+        student_name=student_name,
+        status=assessment.status,
+        uploaded_at=assessment.uploaded_at,
+        pages=detail_pages,
+    )
+
+
+@router.delete(
+    "/api/assessments/{assessment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_assessment(
+    assessment_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    """Soft-delete the assessment by setting deleted_at."""
+    from datetime import datetime
+
+    result = await db.execute(
+        select(Assessment).where(
+            Assessment.id == assessment_id,
+            Assessment.deleted_at.is_(None),
+        )
+    )
+    assessment = result.scalar_one_or_none()
+    if assessment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="assessment not found",
+        )
+    if assessment.organization_id != user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="assessment does not belong to your organization",
+        )
+    assessment.deleted_at = datetime.utcnow()
+    await db.flush()

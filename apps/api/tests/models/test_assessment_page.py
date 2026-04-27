@@ -1,11 +1,17 @@
-"""Tests for the AssessmentPage model and the Task 1 migration's backfill SQL."""
+"""Tests for the AssessmentPage model.
+
+The Task 1 migration's backfill SQL was tested as part of that migration
+running. After Task 2 dropped assessments.s3_url + original_filename, that
+backfill test is no longer runnable (and no longer needed — the columns are
+gone, the data has migrated, and the SQL can never run again).
+"""
 
 from __future__ import annotations
 
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,8 +47,6 @@ async def _seed_assessment(session: AsyncSession) -> tuple[Organization, Student
         student_id=student.id,
         organization_id=org.id,
         uploaded_by_user_id=user.id,
-        s3_url="legacy/key.png",
-        original_filename="quiz.png",
         status=AssessmentStatus.pending,
     )
     session.add(asmt)
@@ -103,45 +107,3 @@ async def test_unique_page_number_per_assessment(async_session: AsyncSession) ->
         await async_session.flush()
 
 
-async def test_backfill_sql_creates_page_from_legacy_assessment(
-    async_session: AsyncSession,
-) -> None:
-    """The Task 1 migration's BACKFILL_SQL inserts an AssessmentPage row for each
-    Assessment with non-null s3_url. We test the SQL logic directly so we don't
-    have to wire alembic into pytest.
-    """
-    org, _, _, asmt = await _seed_assessment(async_session)
-
-    # Match the migration's BACKFILL_SQL exactly.
-    backfill_sql = text("""
-        INSERT INTO assessment_pages (
-            id, assessment_id, page_number, s3_url, original_filename,
-            content_type, organization_id, created_at, updated_at
-        )
-        SELECT
-            gen_random_uuid(),
-            id,
-            1,
-            s3_url,
-            original_filename,
-            'image/png',
-            organization_id,
-            now(),
-            now()
-        FROM assessments
-        WHERE s3_url IS NOT NULL AND deleted_at IS NULL;
-    """)
-    await async_session.execute(backfill_sql)
-    await async_session.flush()
-
-    rows = (
-        await async_session.execute(
-            select(AssessmentPage).where(AssessmentPage.assessment_id == asmt.id)
-        )
-    ).scalars().all()
-    assert len(rows) == 1
-    assert rows[0].page_number == 1
-    assert rows[0].s3_url == "legacy/key.png"
-    assert rows[0].original_filename == "quiz.png"
-    assert rows[0].content_type == "image/png"
-    assert rows[0].organization_id == org.id
