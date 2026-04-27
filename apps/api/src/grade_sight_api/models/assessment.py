@@ -64,5 +64,5 @@ class Assessment(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
         "AssessmentPage",
         back_populates="assessment",
         order_by="AssessmentPage.page_number",
-        lazy="selectin",
+        lazy="select",
     )

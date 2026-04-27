@@ -17,6 +17,7 @@ All endpoints tenant-scoped via user.organization_id.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -216,7 +217,8 @@ async def create_assessment(
         audit_reason="upload student assessment image",
     )
 
-    intents: list[AssessmentPageUploadIntent] = []
+    # First pass: add all page rows, flush once.
+    pages: list[AssessmentPage] = []
     for index, f in enumerate(payload.files, start=1):
         filename = f.filename.strip()
         ext = _safe_extension(filename)
@@ -233,17 +235,22 @@ async def create_assessment(
             organization_id=user.organization_id,
         )
         db.add(page)
-        await db.flush()
+        pages.append(page)
+    await db.flush()
+
+    # Second pass: generate presigned upload URLs (each writes audit_log).
+    intents: list[AssessmentPageUploadIntent] = []
+    for page, f in zip(pages, payload.files, strict=True):
         upload_url = await storage_service.get_upload_url(
             ctx=ctx,
-            key=key,
+            key=page.s3_url,
             content_type=f.content_type,
             db=db,
         )
         intents.append(
             AssessmentPageUploadIntent(
-                page_number=index,
-                key=key,
+                page_number=page.page_number,
+                key=page.s3_url,
                 upload_url=upload_url,
             )
         )
@@ -337,8 +344,6 @@ async def delete_assessment(
     db: AsyncSession = Depends(get_session),
 ) -> None:
     """Soft-delete the assessment by setting deleted_at."""
-    from datetime import datetime
-
     result = await db.execute(
         select(Assessment).where(
             Assessment.id == assessment_id,
@@ -356,5 +361,5 @@ async def delete_assessment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="assessment does not belong to your organization",
         )
-    assessment.deleted_at = datetime.utcnow()
+    assessment.deleted_at = datetime.now(UTC).replace(tzinfo=None)
     await db.flush()
