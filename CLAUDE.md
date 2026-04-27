@@ -6,7 +6,7 @@ This file is auto-loaded at the start of every Claude Code session. It captures 
 
 Grade-Sight is a diagnostic grading platform for secondary math (Algebra → Pre-Calc, CA Common Core). Core differentiator: identifies *why* students lose points via a four-category error taxonomy (conceptual, execution, verification, confidence/strategy), with longitudinal tracking per student. Dual GTM from MVP: parent mode (primary early traction) and individual teacher mode (bottoms-up SaaS wedge). District sales deferred to Phase 3.
 
-**Current phase:** Phase 1 MVP — Specs 1 (scaffolding), 2 (DB schema + migrations), 3 (Clerk auth integration), 4 (Stripe billing integration), 5 (external service abstraction layer), 6 (lazy-upsert cleanup), 7 (error taxonomy v1), 8 (taxonomy schema + seeding), 9 (assessment upload UI shell), and 10 (multi-page assessment upload) complete. Next: diagnostic engine spec.
+**Current phase:** Phase 1 MVP — Specs 1 (scaffolding), 2 (DB schema + migrations), 3 (Clerk auth integration), 4 (Stripe billing integration), 5 (external service abstraction layer), 6 (lazy-upsert cleanup), 7 (error taxonomy v1), 8 (taxonomy schema + seeding), 9 (assessment upload UI shell), 10 (multi-page assessment upload), and 11 (diagnostic engine v1) complete. Next: answer key upload (Spec 12).
 
 ## 2. Tech stack (fixed)
 
@@ -64,8 +64,6 @@ Code and design choices that would violate any of these require explicit discuss
 
 Until the gate is explicitly lifted here:
 
-- Do not build diagnostic engine logic — taxonomy not finalized
-- Do not wire up Claude API calls — service layer stubs only
 - Do not build the assessment upload flow — schema only
 - Do not build UI beyond basic layout, auth, and navigation
 - Do not implement eval set infrastructure — comes after engine is wired
