@@ -5,17 +5,19 @@ import { env } from "@/env";
 import type { UserResponse } from "@grade-sight/shared";
 
 export type {
+  AssessmentDetail,
+  AssessmentListItem,
+  AssessmentStatus,
+  AssessmentUploadIntent,
   EntitlementResponse,
   Student,
-  AssessmentStatus,
-  AssessmentListItem,
-  AssessmentUploadIntent,
 } from "./types";
 
 import type {
+  AssessmentDetail,
+  AssessmentListItem,
   EntitlementResponse,
   Student,
-  AssessmentListItem,
 } from "./types";
 
 async function authedFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -99,4 +101,11 @@ export async function fetchAssessments(opts?: { limit?: number }): Promise<Asses
   if (!response.ok) throw new Error(`GET /api/assessments failed: ${response.status}`);
   const body = (await response.json()) as { assessments: AssessmentListItem[] };
   return body.assessments;
+}
+
+export async function fetchAssessmentDetail(id: string): Promise<AssessmentDetail | null> {
+  const response = await authedFetch(`/api/assessments/${id}`, { method: "GET" });
+  if (response.status === 401 || response.status === 404) return null;
+  if (!response.ok) throw new Error(`GET /api/assessments/${id} failed: ${response.status}`);
+  return (await response.json()) as AssessmentDetail;
 }

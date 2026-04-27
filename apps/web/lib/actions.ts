@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
-import type { Student, AssessmentUploadIntent } from "./types";
+import type { AssessmentUploadIntent, Student } from "./types";
 
 async function callApi(path: string, init?: RequestInit): Promise<Response> {
   const { getToken } = await auth();
@@ -37,8 +37,7 @@ export async function createStudent(input: {
 
 export async function createAssessmentForUpload(input: {
   student_id: string;
-  original_filename: string;
-  content_type: string;
+  files: { filename: string; content_type: string }[];
 }): Promise<AssessmentUploadIntent> {
   const response = await callApi(`/api/assessments`, {
     method: "POST",
@@ -49,4 +48,16 @@ export async function createAssessmentForUpload(input: {
     throw new Error(`POST /api/assessments failed: ${response.status}`);
   }
   return (await response.json()) as AssessmentUploadIntent;
+}
+
+export async function deleteAssessment(id: string): Promise<void> {
+  const response = await callApi(`/api/assessments/${id}`, {
+    method: "DELETE",
+  });
+  if (response.status === 404) {
+    return;
+  }
+  if (!response.ok) {
+    throw new Error(`DELETE /api/assessments/${id} failed: ${response.status}`);
+  }
 }

@@ -19,13 +19,34 @@ export interface AssessmentListItem {
   id: string;
   student_id: string;
   student_name: string;
-  original_filename: string;
+  page_count: number;
+  first_page_thumbnail_url: string;
   status: AssessmentStatus;
   uploaded_at: string;
 }
 
+export interface AssessmentPageUploadIntent {
+  page_number: number;
+  key: string;
+  upload_url: string;
+}
+
 export interface AssessmentUploadIntent {
   assessment_id: string;
-  upload_url: string;
-  key: string;
+  pages: AssessmentPageUploadIntent[];
+}
+
+export interface AssessmentDetailPage {
+  page_number: number;
+  original_filename: string;
+  view_url: string;
+}
+
+export interface AssessmentDetail {
+  id: string;
+  student_id: string;
+  student_name: string;
+  status: AssessmentStatus;
+  uploaded_at: string;
+  pages: AssessmentDetailPage[];
 }
