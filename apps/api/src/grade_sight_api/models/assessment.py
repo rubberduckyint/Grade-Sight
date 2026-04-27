@@ -20,6 +20,7 @@ from ..db.base import Base
 from ..db.mixins import SoftDeleteMixin, TenantMixin, TimestampMixin
 
 if TYPE_CHECKING:
+    from .answer_key import AnswerKey
     from .assessment_diagnosis import AssessmentDiagnosis
     from .assessment_page import AssessmentPage
 
@@ -60,6 +61,14 @@ class Assessment(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
         nullable=False,
         server_default=text("now()"),
     )
+    already_graded: Mapped[bool] = mapped_column(
+        nullable=False,
+        server_default=text("false"),
+    )
+    review_all: Mapped[bool] = mapped_column(
+        nullable=False,
+        server_default=text("false"),
+    )
 
     pages: Mapped[list[AssessmentPage]] = relationship(
         "AssessmentPage",
@@ -71,5 +80,9 @@ class Assessment(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
         "AssessmentDiagnosis",
         back_populates="assessment",
         uselist=False,
+        lazy="select",
+    )
+    answer_key: Mapped[AnswerKey | None] = relationship(
+        "AnswerKey",
         lazy="select",
     )

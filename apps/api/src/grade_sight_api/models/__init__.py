@@ -5,6 +5,7 @@ importing this module once.
 """
 
 from .answer_key import AnswerKey
+from .answer_key_page import AnswerKeyPage
 from .assessment import Assessment, AssessmentStatus
 from .assessment_diagnosis import AssessmentDiagnosis
 from .assessment_page import AssessmentPage
@@ -25,6 +26,7 @@ from .user import User, UserRole
 
 __all__ = [
     "AnswerKey",
+    "AnswerKeyPage",
     "Assessment",
     "AssessmentDiagnosis",
     "AssessmentPage",

@@ -1,19 +1,22 @@
-"""AnswerKey model — per-assignment reference data.
+"""AnswerKey model — multi-page reference data for grading assessments.
 
-May be image-based (s3_url) or structured (content JSONB) or both.
+Owns N AnswerKeyPage rows. Each Assessment can optionally reference one
+AnswerKey via assessments.answer_key_id (FK from Spec 2).
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import Base
 from ..db.mixins import SoftDeleteMixin, TenantMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from .answer_key_page import AnswerKeyPage
 
 
 class AnswerKey(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
@@ -25,5 +28,10 @@ class AnswerKey(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(nullable=False)
-    s3_url: Mapped[str | None] = mapped_column(nullable=True)
-    content: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    pages: Mapped[list[AnswerKeyPage]] = relationship(
+        "AnswerKeyPage",
+        back_populates="answer_key",
+        order_by="AnswerKeyPage.page_number",
+        lazy="selectin",
+    )

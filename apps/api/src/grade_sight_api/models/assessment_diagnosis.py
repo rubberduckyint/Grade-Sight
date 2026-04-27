@@ -14,7 +14,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, Numeric, Text
+from sqlalchemy import ForeignKey, Numeric, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import Base
@@ -43,6 +43,11 @@ class AssessmentDiagnosis(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(10, 6), nullable=False)
     latency_ms: Mapped[int] = mapped_column(nullable=False)
     overall_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    total_problems_seen: Mapped[int | None] = mapped_column(nullable=True)
+    analysis_mode: Mapped[str] = mapped_column(
+        nullable=False,
+        server_default=text("'auto_grade'"),
+    )
 
     assessment: Mapped[Assessment] = relationship(
         "Assessment",
