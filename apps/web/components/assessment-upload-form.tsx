@@ -62,6 +62,7 @@ export function AssessmentUploadForm({ initialStudents }: AssessmentUploadFormPr
           original_filename: file.name,
           content_type: file.type,
         });
+        // TODO(spec-cleanup): R2 PUT failure leaves orphan pending row — pending detector spec
         const putRes = await fetch(intent.upload_url, {
           method: "PUT",
           body: file,

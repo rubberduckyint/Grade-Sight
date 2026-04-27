@@ -26,7 +26,7 @@ export function StudentPicker({
   const [isPending, setIsPending] = useState(false);
 
   const filtered = students.filter((s) =>
-    s.full_name.toLowerCase().includes(query.toLowerCase()),
+    s.full_name.toLowerCase().includes(query.toLowerCase().trim()),
   );
 
   const handleCreate = async () => {
@@ -114,6 +114,7 @@ export function StudentPicker({
             key={s.id}
             type="button"
             onClick={() => onChange(s.id)}
+            aria-pressed={value === s.id}
             className={`block w-full px-3 py-2 text-left text-base hover:bg-paper-soft ${
               value === s.id ? "bg-accent-soft text-ink" : "text-ink"
             }`}
