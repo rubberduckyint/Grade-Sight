@@ -17,6 +17,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "db:migrate": "pnpm --filter api db:migrate",
+    "db:seed": "pnpm --filter api db:seed",
     "db:makemigration": "pnpm --filter api db:makemigration",
     "db:rollback": "pnpm --filter api db:rollback"
   },

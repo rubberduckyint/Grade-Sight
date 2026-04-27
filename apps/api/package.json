@@ -11,6 +11,7 @@
     "typecheck": "uv run mypy src",
     "test": "sh -c 'uv run pytest; ec=$?; [ $ec -eq 5 ] && exit 0 || exit $ec'",
     "db:migrate": "uv run alembic upgrade head",
+    "db:seed": "uv run python -m grade_sight_api.scripts.seed_taxonomy",
     "db:makemigration": "uv run alembic revision --autogenerate -m",
     "db:rollback": "uv run alembic downgrade -1"
   }
