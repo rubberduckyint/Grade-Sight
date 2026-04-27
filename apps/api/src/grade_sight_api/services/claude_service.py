@@ -288,3 +288,124 @@ async def call_vision(
         tokens_output=tokens_out,
         model=model,
     )
+
+
+def _build_multi_vision_message(
+    images: list[bytes | str], prompt: str
+) -> dict[str, Any]:
+    content: list[dict[str, Any]] = []
+    for image in images:
+        if isinstance(image, bytes):
+            source: dict[str, Any] = {
+                "type": "base64",
+                "media_type": "image/png",
+                "data": base64.b64encode(image).decode("ascii"),
+            }
+        else:
+            source = {"type": "url", "url": image}
+        content.append({"type": "image", "source": source})
+    content.append({"type": "text", "text": prompt})
+    return {"role": "user", "content": content}
+
+
+async def call_vision_multi(
+    *,
+    ctx: CallContext,
+    model: str,
+    system: str,
+    images: list[bytes | str],
+    prompt: str,
+    max_tokens: int,
+    db: AsyncSession,
+    cache_system: bool = False,
+) -> ClaudeVisionResponse:
+    """Call Claude with N images + a prompt.
+
+    `images` accepts a mix of raw bytes (sent as base64) and URL strings.
+    When cache_system=True, the system parameter is sent as a list with
+    cache_control: ephemeral on the single text block, enabling prompt
+    caching (~5-min TTL) for the static taxonomy injection.
+
+    Writes LLMCallLog on every attempt and audit_log when ctx.contains_pii.
+    """
+    client = _get_client()
+    user_message = _build_multi_vision_message(images, prompt)
+    typed_message = cast(anthropic.types.MessageParam, user_message)
+
+    system_param: Any
+    if cache_system:
+        system_param = [
+            {
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ]
+    else:
+        system_param = system
+
+    async def _attempt() -> Any:
+        return await client.messages.create(
+            model=model,
+            system=system_param,
+            messages=[typed_message],
+            max_tokens=max_tokens,
+        )
+
+    start = time.monotonic()
+    try:
+        response = await _with_retries(_attempt)
+    except Exception as exc:
+        latency_ms = int((time.monotonic() - start) * 1000)
+        await write_llm_call_log(
+            db,
+            ctx=ctx,
+            model=model,
+            tokens_input=0,
+            tokens_output=0,
+            cost_usd=Decimal("0"),
+            latency_ms=latency_ms,
+            success=False,
+            error_message=f"{type(exc).__name__}: {exc}",
+        )
+        raise ClaudeServiceError(str(exc)) from exc
+
+    latency_ms = int((time.monotonic() - start) * 1000)
+    text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+    tokens_in = response.usage.input_tokens
+    tokens_out = response.usage.output_tokens
+    cost = compute_cost(model=model, tokens_input=tokens_in, tokens_output=tokens_out)
+
+    await write_llm_call_log(
+        db,
+        ctx=ctx,
+        model=model,
+        tokens_input=tokens_in,
+        tokens_output=tokens_out,
+        cost_usd=cost,
+        latency_ms=latency_ms,
+        success=True,
+    )
+
+    if ctx.contains_pii:
+        await write_audit_log(
+            db,
+            ctx=ctx,
+            resource_type="claude_call",
+            resource_id=None,
+            action="claude_vision_multi_call",
+            extra={
+                "model": model,
+                "tokens_input": tokens_in,
+                "tokens_output": tokens_out,
+                "image_count": len(images),
+                "cache_system": cache_system,
+            },
+        )
+
+    return ClaudeVisionResponse(
+        text="".join(text_blocks),
+        tokens_input=tokens_in,
+        tokens_output=tokens_out,
+        model=model,
+    )
