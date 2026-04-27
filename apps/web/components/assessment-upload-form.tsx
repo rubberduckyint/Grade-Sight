@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -41,12 +41,18 @@ export function AssessmentUploadForm({
   const [isDragging, setIsDragging] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Revoke object URLs on unmount or when staged list changes.
+  // Keep a ref in sync so the unmount cleanup can revoke the latest staged
+  // list (the empty-deps cleanup closure can't see state updates).
+  const stagedRef = useRef<StagedFile[]>([]);
+  useEffect(() => {
+    stagedRef.current = staged;
+  }, [staged]);
+
+  // Revoke all object URLs on unmount.
   useEffect(() => {
     return () => {
-      staged.forEach((s) => URL.revokeObjectURL(s.previewUrl));
+      stagedRef.current.forEach((s) => URL.revokeObjectURL(s.previewUrl));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional cleanup of latest staged list on unmount only
   }, []);
 
   // beforeunload guard while uploads are in flight.
@@ -93,9 +99,13 @@ export function AssessmentUploadForm({
           previewUrl: URL.createObjectURL(f),
         });
       }
-      // Cap at MAX_PAGES.
+      // Cap at MAX_PAGES; revoke the truncated tail's preview URLs so
+      // they don't leak if the user drops more files than allowed.
       if (merged.length > MAX_PAGES) {
         setError(`Max ${MAX_PAGES} pages per assessment`);
+        for (const s of merged.slice(MAX_PAGES)) {
+          URL.revokeObjectURL(s.previewUrl);
+        }
         merged.length = MAX_PAGES;
       }
       // Sort alphabetically by filename.
