@@ -5,6 +5,7 @@ import { env } from "@/env";
 import type { UserResponse } from "@grade-sight/shared";
 
 export type {
+  AnswerKey,
   AssessmentDetail,
   AssessmentListItem,
   AssessmentStatus,
@@ -14,6 +15,7 @@ export type {
 } from "./types";
 
 import type {
+  AnswerKey,
   AssessmentDetail,
   AssessmentListItem,
   EntitlementResponse,
@@ -108,4 +110,14 @@ export async function fetchAssessmentDetail(id: string): Promise<AssessmentDetai
   if (response.status === 401 || response.status === 404) return null;
   if (!response.ok) throw new Error(`GET /api/assessments/${id} failed: ${response.status}`);
   return (await response.json()) as AssessmentDetail;
+}
+
+// ---- Answer keys ----
+
+export async function fetchAnswerKeys(): Promise<AnswerKey[]> {
+  const response = await authedFetch(`/api/answer-keys`, { method: "GET" });
+  if (response.status === 401) return [];
+  if (!response.ok) throw new Error(`GET /api/answer-keys failed: ${response.status}`);
+  const body = (await response.json()) as { answer_keys: AnswerKey[] };
+  return body.answer_keys;
 }

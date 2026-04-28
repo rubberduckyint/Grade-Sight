@@ -50,6 +50,7 @@ export interface AssessmentDetail {
   uploaded_at: string;
   pages: AssessmentDetailPage[];
   diagnosis: AssessmentDiagnosis | null;
+  answer_key: AssessmentDetailAnswerKey | null;
 }
 
 export interface ProblemObservation {
@@ -74,4 +75,46 @@ export interface AssessmentDiagnosis {
   latency_ms: number;
   created_at: string;
   problems: ProblemObservation[];
+  analysis_mode: "auto_grade" | "with_key" | "already_graded";
+  total_problems_seen: number | null;
+}
+
+// ---- Answer keys ----
+
+export interface AnswerKey {
+  id: string;
+  name: string;
+  page_count: number;
+  first_page_thumbnail_url: string;
+  created_at: string;
+}
+
+export interface AnswerKeyDetailPage {
+  page_number: number;
+  original_filename: string;
+  view_url: string;
+}
+
+export interface AnswerKeyDetail {
+  id: string;
+  name: string;
+  created_at: string;
+  pages: AnswerKeyDetailPage[];
+}
+
+export interface AnswerKeyPageUploadIntent {
+  page_number: number;
+  key: string;
+  upload_url: string;
+}
+
+export interface AnswerKeyUploadIntent {
+  answer_key_id: string;
+  pages: AnswerKeyPageUploadIntent[];
+}
+
+export interface AssessmentDetailAnswerKey {
+  id: string;
+  name: string;
+  page_count: number;
 }
