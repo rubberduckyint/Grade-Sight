@@ -5,10 +5,14 @@ import { AssessmentUploadForm } from "@/components/assessment-upload-form";
 import { PageContainer } from "@/components/page-container";
 import { SectionEyebrow } from "@/components/section-eyebrow";
 import { SerifHeadline } from "@/components/serif-headline";
-import { fetchMe, fetchStudents } from "@/lib/api";
+import { fetchAnswerKeys, fetchMe, fetchStudents } from "@/lib/api";
 
 export default async function UploadPage() {
-  const [user, students] = await Promise.all([fetchMe(), fetchStudents()]);
+  const [user, students, answerKeys] = await Promise.all([
+    fetchMe(),
+    fetchStudents(),
+    fetchAnswerKeys(),
+  ]);
   if (!user) redirect("/sign-in");
 
   return (
@@ -24,7 +28,11 @@ export default async function UploadPage() {
           Pick a student and upload a photo of their graded work. Grade Sight
           will diagnose the error patterns once the assessment processes.
         </p>
-        <AssessmentUploadForm initialStudents={students} />
+        <AssessmentUploadForm
+          initialStudents={students}
+          initialAnswerKeys={answerKeys}
+          userRole={user.role === "teacher" ? "teacher" : "parent"}
+        />
       </PageContainer>
     </AppShell>
   );

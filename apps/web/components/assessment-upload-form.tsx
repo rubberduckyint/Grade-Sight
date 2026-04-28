@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { AnswerKeyPicker } from "@/components/answer-key-picker";
 import { Button } from "@/components/ui/button";
 import { StudentPicker } from "@/components/student-picker";
-import type { Student } from "@/lib/types";
+import type { AnswerKey, Student } from "@/lib/types";
 import { createAssessmentForUpload } from "@/lib/actions";
 import { runWithConcurrency } from "@/lib/upload-queue";
 
@@ -22,6 +23,8 @@ interface StagedFile {
 
 export interface AssessmentUploadFormProps {
   initialStudents: Student[];
+  initialAnswerKeys: AnswerKey[];
+  userRole: "teacher" | "parent";
 }
 
 function formatBytes(bytes: number): string {
@@ -31,9 +34,14 @@ function formatBytes(bytes: number): string {
 
 export function AssessmentUploadForm({
   initialStudents,
+  initialAnswerKeys,
+  userRole,
 }: AssessmentUploadFormProps) {
   const router = useRouter();
   const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [answerKeyId, setAnswerKeyId] = useState<string | null>(null);
+  const [alreadyGraded, setAlreadyGraded] = useState<boolean>(false);
+  const [reviewAll, setReviewAll] = useState<boolean>(false);
   const [studentId, setStudentId] = useState<string | null>(null);
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +153,9 @@ export function AssessmentUploadForm({
         filename: s.file.name,
         content_type: s.file.type,
       })),
+      answer_key_id: answerKeyId ?? undefined,
+      already_graded: alreadyGraded,
+      review_all: reviewAll,
     });
 
     // Pair each staged file with its intent by index (server preserved order).
@@ -205,6 +216,9 @@ export function AssessmentUploadForm({
     });
   }
 
+  const isTeacher = userRole === "teacher";
+  const showReviewAll = answerKeyId !== null || alreadyGraded;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <StudentPicker
@@ -213,6 +227,20 @@ export function AssessmentUploadForm({
         onChange={setStudentId}
         onStudentAdded={handleStudentAdded}
       />
+
+      {/* Teacher's primary surface: answer key picker prominent */}
+      {isTeacher && (
+        <div>
+          <p className="mb-2 text-sm text-ink-soft font-medium">
+            Answer key (recommended)
+          </p>
+          <AnswerKeyPicker
+            keys={initialAnswerKeys}
+            value={answerKeyId}
+            onChange={setAnswerKeyId}
+          />
+        </div>
+      )}
 
       <div>
         <label className="block text-sm text-ink-soft" htmlFor="page-files">
@@ -292,6 +320,72 @@ export function AssessmentUploadForm({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* Parent's primary surface: already-graded checkbox prominent */}
+      {!isTeacher && (
+        <label className="flex items-start gap-3 rounded-[var(--radius-sm)] border border-rule bg-paper p-4 hover:bg-paper-soft cursor-pointer">
+          <input
+            type="checkbox"
+            checked={alreadyGraded}
+            onChange={(e) => setAlreadyGraded(e.target.checked)}
+            disabled={isPending}
+            className="mt-1"
+          />
+          <div>
+            <p className="text-base text-ink">
+              This paper is already graded by the teacher
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">
+              Grade-Sight will read the teacher&apos;s red marks instead of
+              re-grading from scratch (faster + cheaper).
+            </p>
+          </div>
+        </label>
+      )}
+
+      {/* Teacher's secondary surface: small checkbox */}
+      {isTeacher && (
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            checked={alreadyGraded}
+            onChange={(e) => setAlreadyGraded(e.target.checked)}
+            disabled={isPending}
+          />
+          <span>This paper is already graded by the teacher</span>
+        </label>
+      )}
+
+      {/* Parent's secondary surface: small answer-key picker */}
+      {!isTeacher && (
+        <details className="rounded-[var(--radius-sm)] border border-rule-soft bg-paper-soft p-3">
+          <summary className="cursor-pointer text-sm text-ink-soft">
+            I have an answer key (optional)
+          </summary>
+          <div className="mt-3">
+            <AnswerKeyPicker
+              keys={initialAnswerKeys}
+              value={answerKeyId}
+              onChange={setAnswerKeyId}
+            />
+          </div>
+        </details>
+      )}
+
+      {/* Review-all override (only when key or graded set) */}
+      {showReviewAll && (
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            checked={reviewAll}
+            onChange={(e) => setReviewAll(e.target.checked)}
+            disabled={isPending}
+          />
+          <span>
+            Review all problems (default: show only the wrong ones)
+          </span>
+        </label>
       )}
 
       {progress && (
