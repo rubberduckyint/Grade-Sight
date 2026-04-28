@@ -2,8 +2,13 @@
  * Sentry beforeSend hook for the Next.js app — strips PII before any event
  * leaves the browser/server.
  *
- * Mirrors the backend scrubber at apps/api/.../sentry_scrubber.py. Returns
- * null to drop the event entirely if scrubbing itself raises.
+ * Mirrors the backend scrubber at apps/api/.../sentry_scrubber.py:
+ * - request.headers / cookies / data / query_string bulk-removed
+ * - user fields beyond .id stripped
+ * - email + presigned-R2-URL patterns redacted in event.message and
+ *   event.exception.values[].value
+ *
+ * Returns null to drop the event entirely if scrubbing itself raises.
  */
 
 type SentryEvent = Record<string, unknown>;
@@ -44,6 +49,20 @@ export function scrubEvent(event: SentryEvent): SentryEvent | null {
     // 3. Redact email + R2 URL patterns from message.
     if (typeof event.message === "string") {
       event.message = redactString(event.message);
+    }
+
+    // 3b. Redact email + R2 URL patterns from exception value strings.
+    // Mirrors the backend scrubber's step 3b — covers `throw new Error("...email...")`.
+    const exception = event.exception;
+    if (isRecord(exception)) {
+      const values = exception.values;
+      if (Array.isArray(values)) {
+        for (const excVal of values) {
+          if (isRecord(excVal) && typeof excVal.value === "string") {
+            excVal.value = redactString(excVal.value);
+          }
+        }
+      }
     }
 
     return event;

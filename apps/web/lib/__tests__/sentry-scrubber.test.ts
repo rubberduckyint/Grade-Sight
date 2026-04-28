@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { scrubEvent } from "@/lib/sentry-scrubber";
 
 describe("scrubEvent", () => {
@@ -78,9 +78,35 @@ describe("scrubEvent", () => {
     expect(values?.[0]?.type).toBe("TypeError");
   });
 
+  it("redacts emails and R2 URLs in exception values", () => {
+    const cleaned = scrubEvent({
+      exception: {
+        values: [
+          {
+            type: "RuntimeError",
+            value:
+              "Failed to fetch lily@example.com from https://abc.r2.cloudflarestorage.com/bucket/key?sig=foo",
+          },
+        ],
+      },
+    });
+    const values = (cleaned?.exception as { values?: Array<{ value?: string }> })?.values;
+    const redacted = values?.[0]?.value ?? "";
+    expect(redacted).not.toContain("lily@example.com");
+    expect(redacted).not.toContain("r2.cloudflarestorage.com");
+    expect(redacted).toContain("[redacted-email]");
+    expect(redacted).toContain("[redacted-r2-url]");
+  });
+
   it("returns null when scrub itself throws", () => {
     // Force scrubber failure: feed a non-object to the regex code path.
-    const cleaned = scrubEvent(null as unknown as Record<string, unknown>);
-    expect(cleaned).toBeNull();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const cleaned = scrubEvent(null as unknown as Record<string, unknown>);
+      expect(cleaned).toBeNull();
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
