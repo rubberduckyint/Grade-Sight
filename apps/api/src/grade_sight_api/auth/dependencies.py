@@ -18,6 +18,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import sentry_sdk as sentry_sdk
 import stripe
 from clerk_backend_api.models.createorganizationop import CreateOrganizationRequestBody
 from fastapi import Depends, HTTPException, Request, status
@@ -115,6 +116,18 @@ def _extract_unsafe_metadata(clerk_user: Any) -> dict[str, Any]:
     return {}
 
 
+def _attach_sentry_user_context(user: User) -> None:
+    """Attach pseudonymous user context to the current Sentry scope.
+
+    Only the internal User.id UUID and organization_id are sent — no email,
+    no name, no Clerk identifiers. Sentry's hub model scopes this to the
+    current request, so values don't leak across requests.
+    """
+    sentry_sdk.set_user({"id": str(user.id)})
+    if user.organization_id is not None:
+        sentry_sdk.set_tag("organization_id", str(user.organization_id))
+
+
 async def _cleanup_partial_lazy_upsert(
     *,
     clerk_org_id: str | None,
@@ -190,6 +203,7 @@ async def get_current_user(
             changed = True
         if changed:
             await db.flush()
+        _attach_sentry_user_context(existing)
         return existing
 
     # ─── New user: create Clerk org + DB org + Stripe customer + trial sub + user row ───
@@ -211,6 +225,7 @@ async def get_current_user(
     )
     existing = result.scalar_one_or_none()
     if existing is not None:
+        _attach_sentry_user_context(existing)
         return existing
 
     unsafe_meta = _extract_unsafe_metadata(clerk_user)
@@ -291,4 +306,5 @@ async def get_current_user(
         role.value,
         plan.value,
     )
+    _attach_sentry_user_context(new_user)
     return new_user
