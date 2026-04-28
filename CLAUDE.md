@@ -6,7 +6,7 @@ This file is auto-loaded at the start of every Claude Code session. It captures 
 
 Grade-Sight is a diagnostic grading platform for secondary math (Algebra → Pre-Calc, CA Common Core). Core differentiator: identifies *why* students lose points via a four-category error taxonomy (conceptual, execution, verification, confidence/strategy), with longitudinal tracking per student. Dual GTM from MVP: parent mode (primary early traction) and individual teacher mode (bottoms-up SaaS wedge). District sales deferred to Phase 3.
 
-**Current phase:** Phase 1 MVP — Specs 1 (scaffolding), 2 (DB schema + migrations), 3 (Clerk auth integration), 4 (Stripe billing integration), 5 (external service abstraction layer), 6 (lazy-upsert cleanup), 7 (error taxonomy v1), 8 (taxonomy schema + seeding), 9 (assessment upload UI shell), 10 (multi-page assessment upload), and 11 (diagnostic engine v1) complete. Next: answer key upload (Spec 12).
+**Current phase:** Phase 1 MVP — Specs 1 (scaffolding), 2 (DB schema + migrations), 3 (Clerk auth integration), 4 (Stripe billing integration), 5 (external service abstraction layer), 6 (lazy-upsert cleanup), 7 (error taxonomy v1), 8 (taxonomy schema + seeding), 9 (assessment upload UI shell), 10 (multi-page assessment upload), 11 (diagnostic engine v1), 12 (answer key + engine modes), and 13 (Sentry monitoring) complete. Next: navigation + UX pass (incoming design handoff).
 
 ## 2. Tech stack (fixed)
 
@@ -57,6 +57,7 @@ Do not propose alternatives to these choices unless asked.
 - Common Sense Privacy evaluation pursued
 - Privacy policy reviewed by edtech counsel
 - 72-hour incident notification
+- Pseudonymous error diagnostics (internal user/org UUIDs only — no names, emails, or student work) shared with our error-tracking subprocessor solely to keep the platform reliable and secure
 
 Code and design choices that would violate any of these require explicit discussion before proceeding.
 
@@ -68,6 +69,7 @@ Until the gate is explicitly lifted here:
 - Do not build UI beyond basic layout, auth, and navigation
 - Do not implement eval set infrastructure — comes after engine is wired
 - Do not build batch upload, cohort pulse, admin dashboards, or LMS integrations — those are Phase 2+
+- Do not enable Sentry Session Replay — privacy risk requires explicit review
 
 ## 6. Working agreements
 

@@ -79,6 +79,7 @@ Positioning: **more specifically committed than any competitor**, without over-c
 - No third-party commercial sharing
 - US-only data storage (Railway US region)
 - Published subprocessor list, 30-day change notification
+<!-- TODO (Spec 13 Sentry monitoring): when the public subprocessor list is drafted with edtech counsel, include Sentry alongside Anthropic, Cloudflare, Clerk, Stripe, Resend, Railway. Add the pseudonymous-diagnostics paragraph (CLAUDE.md §4) to the privacy policy at the same time. -->
 - 30-day deletion window on request, including backups
 - Data minimization: collect only what's needed
 - SDPC NDPA signable
