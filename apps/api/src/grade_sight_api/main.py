@@ -10,10 +10,8 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .auth.dependencies import get_current_user
 from .config import settings
 from .db import engine, get_session
-from .models import User
 from .routers import answer_keys as answer_keys_router
 from .routers import assessments as assessments_router
 from .routers import billing as billing_router
@@ -67,6 +65,6 @@ async def db_health(db: AsyncSession = Depends(get_session)) -> dict[str, object
 
 
 @app.get("/api/_smoke/raise")
-def smoke_raise(_user: User = Depends(get_current_user)) -> None:
+def smoke_raise() -> None:
     """TEMPORARY: Spec 13 Sentry smoke test. Remove after verification."""
     raise RuntimeError("sentry smoke test")
