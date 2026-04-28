@@ -57,6 +57,7 @@ select = [
 # FastAPI's Depends() pattern in default args is the canonical style; B008 flags it.
 "src/grade_sight_api/main.py" = ["B008"]
 "src/grade_sight_api/auth/dependencies.py" = ["B008"]
+"src/grade_sight_api/routers/answer_keys.py" = ["B008"]
 "src/grade_sight_api/routers/assessments.py" = ["B008"]
 "src/grade_sight_api/routers/billing.py" = ["B008"]
 "src/grade_sight_api/routers/me.py" = ["B008"]
