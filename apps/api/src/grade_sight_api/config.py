@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     r2_secret_access_key: str
     r2_bucket: str
     r2_endpoint_url: str
+    sentry_dsn: str | None = None
 
 
 settings = Settings()  # type: ignore[call-arg]
