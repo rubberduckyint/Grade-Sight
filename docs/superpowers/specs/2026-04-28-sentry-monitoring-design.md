@@ -18,7 +18,6 @@ This is pure infrastructure. No user-facing UX changes, no new product surfaces.
 - Pseudonymous user context: `user.id` (our internal `User` UUID) + `organization_id` tag — never name/email/student data
 - Initialization gate: SDK is a no-op unless `ENVIRONMENT=production` AND DSN env var is set
 - 10% transaction sampling for performance traces (`traces_sample_rate=0.1`)
-- One opt-in `capture_message` inside `engine_service.diagnose_assessment` for the silent JSON-shape-mismatch branch
 - Tests for the scrubber and init-gate behavior; manual Railway smoke documented in the plan
 - CLAUDE.md updates (privacy commitment line, scope gate for Session Replay, current-phase tick on completion)
 
@@ -178,7 +177,7 @@ User context attachment uses `/api/me` (already called in every authenticated pa
 - 4xx HTTPExceptions (Pydantic 422, validation 400, auth 401/403) — user input mistakes, not bugs. Sentry's default behavior already filters these.
 - Soft retries inside `_with_retries` — only the terminal raise lands in Sentry, not each retry attempt.
 
-**One opt-in capture:** `engine_service.diagnose_assessment` currently swallows certain non-fatal Claude response shape mismatches (e.g., bad JSON inside an otherwise-successful 200). These silent failures are exactly the bugs Sentry should surface. Add `sentry_sdk.capture_message(..., level="warning")` inside the existing exception branch — same user-facing behavior, observable for the operator.
+**Engine parse failures already covered by default capture:** `engine_service.diagnose_assessment` already raises `EngineParseError` on Claude JSON shape mismatches — the route handler propagates it and FastAPI auto-instrumentation captures it. No extra `capture_message` is needed.
 
 ## Privacy & compliance updates
 
@@ -235,7 +234,6 @@ The public privacy policy and subprocessor list are counsel-reviewed deliverable
 - `apps/api/src/grade_sight_api/config.py` (add optional `sentry_dsn: str | None = None`)
 - `apps/api/src/grade_sight_api/main.py` (call `setup_sentry()` before `app = FastAPI(...)`)
 - `apps/api/src/grade_sight_api/auth/dependencies.py` (`set_user` + `set_tag` after `get_current_user` resolves)
-- `apps/api/src/grade_sight_api/services/engine_service.py` (one `capture_message` in JSON-shape-mismatch branch)
 - `apps/api/.env.example` (uncomment `SENTRY_DSN=`, add prod-only comment)
 - `apps/api/tests/auth/test_dependencies.py` (extend with user-context assertion)
 
