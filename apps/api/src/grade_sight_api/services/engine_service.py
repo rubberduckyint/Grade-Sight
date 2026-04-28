@@ -31,6 +31,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from ..models.answer_key_page import AnswerKeyPage
 from ..models.assessment import Assessment, AssessmentStatus
 from ..models.assessment_diagnosis import AssessmentDiagnosis
 from ..models.assessment_page import AssessmentPage
@@ -71,6 +72,7 @@ class _EngineProblem(BaseModel):
 
 class _EngineOutput(BaseModel):
     overall_summary: str | None = None
+    total_problems_seen: int | None = None
     problems: list[_EngineProblem]
 
 
@@ -87,7 +89,14 @@ def _strip_markdown_fences(text: str) -> str:
     return text.strip()
 
 
-async def _build_system_prompt(db: AsyncSession) -> str:
+async def _build_system_prompt(
+    db: AsyncSession,
+    *,
+    mode: str,
+    wrong_only: bool,
+    student_page_count: int,
+    key_page_count: int,
+) -> str:
     cats_result = await db.execute(
         select(ErrorCategory)
         .options(
@@ -122,36 +131,84 @@ async def _build_system_prompt(db: AsyncSession) -> str:
                 lines.append(f"         {pat.description}")
         lines.append("")
 
-    lines.extend(
-        [
-            "INSTRUCTIONS:",
-            "For each problem you find on the pages:",
-            "1. Identify the problem statement and the student's complete work and final answer.",
-            "2. Solve the problem yourself to determine the correct answer.",
-            "3. Compare. If the student's answer is wrong:",
-            "   a. Pick the best-matching error_pattern_slug from the taxonomy.",
-            "   b. Write a one-sentence error description.",
-            "   c. Provide a clear step-by-step solution.",
-            "",
-            "OUTPUT FORMAT (return JSON only, no surrounding text):",
-            "{",
-            '  "overall_summary": "string | null (1-2 sentences highest-level takeaway)",',
-            '  "problems": [',
-            "    {",
-            '      "problem_number": int (1-indexed across all pages),',
-            '      "page_number": int,',
-            '      "student_answer": "string (the student\'s final answer)",',
-            '      "correct_answer": "string (the correct answer)",',
-            '      "is_correct": bool,',
-            '      "error_pattern_slug": "string | null (taxonomy slug if wrong; '
-            'null if correct or no pattern fits)",',
-            '      "error_description": "string | null",',
-            '      "solution_steps": "string | null"',
-            "    }",
-            "  ]",
-            "}",
-        ]
-    )
+    if mode == "with_key":
+        lines.append(
+            f"INPUT LAYOUT: The first {student_page_count} images are "
+            f"STUDENT WORK pages (1-{student_page_count}). The next "
+            f"{key_page_count} images are the ANSWER KEY pages "
+            f"(1-{key_page_count})."
+        )
+        lines.append("")
+        lines.append(
+            "INSTRUCTIONS:"
+            "\nFor each problem on the student pages:"
+            "\n1. Find the matching problem on the answer key."
+            "\n2. Compare the student's answer to the answer key's answer."
+            "\n3. If wrong: pick the best-matching error_pattern_slug from"
+            " the taxonomy, write a 1-sentence error description, and"
+            " provide a clear step-by-step solution."
+        )
+    elif mode == "already_graded":
+        lines.append(
+            "INPUT LAYOUT: The pages show student work that has been GRADED"
+            " BY THE TEACHER. Look for the teacher's markings: red X marks,"
+            " crossed-out answers, score deductions, '-N points' notations,"
+            " comments like 'wrong' or 'incorrect' near a problem."
+        )
+        lines.append("")
+        lines.append(
+            "INSTRUCTIONS:"
+            "\nFor each problem the teacher marked WRONG:"
+            "\n1. Identify the problem statement and the student's work."
+            "\n2. Determine the correct answer."
+            "\n3. Classify the error against the taxonomy and provide a"
+            " step-by-step solution."
+        )
+    else:  # auto_grade
+        lines.append(
+            "INSTRUCTIONS:"
+            "\nFor each problem you find on the pages:"
+            "\n1. Identify the problem statement and the student's complete"
+            " work and final answer."
+            "\n2. Solve the problem yourself to determine the correct answer."
+            "\n3. Compare. If the student is wrong: pick the best-matching"
+            " error_pattern_slug from the taxonomy, write a 1-sentence error"
+            " description, and provide a clear step-by-step solution."
+        )
+
+    lines.append("")
+    if wrong_only:
+        lines.append(
+            "OUTPUT FORMAT (return JSON only, no surrounding text). Output"
+            " ONLY problems where the student got it wrong. Also report"
+            " total_problems_seen as the count of problems you saw across"
+            " all pages, including the correct ones you skipped:"
+        )
+    else:
+        lines.append(
+            "OUTPUT FORMAT (return JSON only, no surrounding text). Output"
+            " ALL problems with the is_correct flag set:"
+        )
+
+    lines.extend([
+        "{",
+        '  "overall_summary": "string | null (1-2 sentences highest-level takeaway)",',
+        '  "total_problems_seen": int | null (only required when wrong_only output)',
+        '  "problems": [',
+        "    {",
+        '      "problem_number": int (1-indexed across all pages),',
+        '      "page_number": int,',
+        '      "student_answer": "string (the student\'s final answer)",',
+        '      "correct_answer": "string (the correct answer)",',
+        '      "is_correct": bool,',
+        '      "error_pattern_slug": "string | null (taxonomy slug if wrong;'
+        ' null if correct or no pattern fits)",',
+        '      "error_description": "string | null",',
+        '      "solution_steps": "string | null"',
+        "    }",
+        "  ]",
+        "}",
+    ])
     return "\n".join(lines)
 
 
@@ -223,8 +280,39 @@ async def diagnose_assessment(
             detail="assessment has no pages",
         )
 
-    # 3. Build prompt + presigned URLs.
-    system_prompt = await _build_system_prompt(db)
+    # 3. Derive mode and load key pages if applicable.
+    if assessment.answer_key_id is not None:
+        mode = "with_key"
+    elif assessment.already_graded:
+        mode = "already_graded"
+    else:
+        mode = "auto_grade"
+
+    wrong_only = (mode != "auto_grade") and (not assessment.review_all)
+
+    key_pages: list[AnswerKeyPage] = []
+    if mode == "with_key":
+        key_result = await db.execute(
+            select(AnswerKeyPage)
+            .where(
+                AnswerKeyPage.answer_key_id == assessment.answer_key_id,
+                AnswerKeyPage.deleted_at.is_(None),
+            )
+            .order_by(AnswerKeyPage.page_number)
+        )
+        key_pages = list(key_result.scalars().all())
+        if not key_pages:
+            assessment.status = AssessmentStatus.failed
+            await db.flush()
+            raise EngineParseError("answer key has no pages")
+
+    system_prompt = await _build_system_prompt(
+        db,
+        mode=mode,
+        wrong_only=wrong_only,
+        student_page_count=len(pages),
+        key_page_count=len(key_pages),
+    )
 
     storage_ctx = CallContext(
         organization_id=user.organization_id,
@@ -237,6 +325,11 @@ async def diagnose_assessment(
     for p in pages:
         url = await storage_service.get_download_url(
             ctx=storage_ctx, key=p.s3_url, db=db
+        )
+        image_urls.append(url)
+    for kp in key_pages:
+        url = await storage_service.get_download_url(
+            ctx=storage_ctx, key=kp.s3_url, db=db
         )
         image_urls.append(url)
 
@@ -309,6 +402,8 @@ async def diagnose_assessment(
         cost_usd=cost,
         latency_ms=latency_ms,
         overall_summary=engine_output.overall_summary,
+        analysis_mode=mode,
+        total_problems_seen=engine_output.total_problems_seen,
     )
     db.add(diagnosis)
     await db.flush()

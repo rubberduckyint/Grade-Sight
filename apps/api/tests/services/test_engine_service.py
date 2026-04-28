@@ -368,3 +368,204 @@ async def test_diagnose_409_when_already_diagnosed(
             assessment_id=asmt.id, user=user, db=async_session,
         )
     assert exc_info.value.status_code == 409
+
+
+# ---- Mode tests ----
+
+
+async def test_diagnose_with_key_mode_includes_key_images_in_call(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    """Engine appends answer key pages to the image list and the prompt
+    describes the layout. analysis_mode='with_key' on the diagnosis row."""
+    from grade_sight_api.models.answer_key import AnswerKey
+    from grade_sight_api.models.answer_key_page import AnswerKeyPage
+
+    org, user, asmt = await _seed_assessment_with_pages(
+        async_session, page_count=2
+    )
+    pattern = seed_minimal_taxonomy["pattern"]
+
+    # Seed answer key + 1 page; attach to assessment
+    key = AnswerKey(
+        uploaded_by_user_id=user.id,
+        organization_id=org.id,
+        name="Test Key",
+    )
+    async_session.add(key)
+    await async_session.flush()
+    async_session.add(
+        AnswerKeyPage(
+            answer_key_id=key.id,
+            organization_id=org.id,
+            page_number=1,
+            s3_url=f"answer-keys/{org.id}/{key.id}/page-001.png",
+            original_filename="key-1.png",
+            content_type="image/png",
+        )
+    )
+    asmt.answer_key_id = key.id
+    await async_session.flush()
+
+    fake_response = ClaudeVisionResponse(
+        text=json.dumps({
+            "overall_summary": "1 wrong of 5 seen.",
+            "total_problems_seen": 5,
+            "problems": [
+                {
+                    "problem_number": 1,
+                    "page_number": 1,
+                    "student_answer": "x = 5",
+                    "correct_answer": "x = 7",
+                    "is_correct": False,
+                    "error_pattern_slug": pattern.slug,
+                    "error_description": "wrong",
+                    "solution_steps": "step",
+                }
+            ],
+        }),
+        tokens_input=1, tokens_output=1, model="claude-sonnet-4-6",
+    )
+
+    captured_kwargs: dict[str, Any] = {}
+
+    async def _capture(**kwargs):
+        captured_kwargs.update(kwargs)
+        return fake_response
+
+    with patch.object(claude_service, "call_vision_multi", new=_capture):
+        await engine_service.diagnose_assessment(
+            assessment_id=asmt.id, user=user, db=async_session,
+        )
+
+    # 2 student pages + 1 key page = 3 images
+    assert len(captured_kwargs["images"]) == 3
+    # System prompt mentions answer key layout
+    assert "ANSWER KEY" in captured_kwargs["system"]
+    assert "STUDENT WORK" in captured_kwargs["system"]
+
+    # Diagnosis stamped with mode
+    diag = (
+        await async_session.execute(
+            select(AssessmentDiagnosis).where(
+                AssessmentDiagnosis.assessment_id == asmt.id
+            )
+        )
+    ).scalar_one()
+    assert diag.analysis_mode == "with_key"
+    assert diag.total_problems_seen == 5
+
+
+async def test_diagnose_already_graded_mode_uses_markings_prompt(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    """already_graded=true with no answer_key_id selects the markings prompt."""
+    _, user, asmt = await _seed_assessment_with_pages(async_session)
+    asmt.already_graded = True
+    await async_session.flush()
+    pattern = seed_minimal_taxonomy["pattern"]
+
+    fake_response = ClaudeVisionResponse(
+        text=json.dumps({
+            "overall_summary": "graded",
+            "total_problems_seen": 4,
+            "problems": [
+                {
+                    "problem_number": 2,
+                    "page_number": 1,
+                    "student_answer": "5",
+                    "correct_answer": "7",
+                    "is_correct": False,
+                    "error_pattern_slug": pattern.slug,
+                    "error_description": "wrong",
+                    "solution_steps": "step",
+                }
+            ],
+        }),
+        tokens_input=1, tokens_output=1, model="claude-sonnet-4-6",
+    )
+
+    captured_kwargs: dict[str, Any] = {}
+
+    async def _capture(**kwargs):
+        captured_kwargs.update(kwargs)
+        return fake_response
+
+    with patch.object(claude_service, "call_vision_multi", new=_capture):
+        await engine_service.diagnose_assessment(
+            assessment_id=asmt.id, user=user, db=async_session,
+        )
+
+    # Prompt mentions teacher markings
+    system = captured_kwargs["system"]
+    assert "GRADED BY THE TEACHER" in system
+    assert "red X" in system or "score deductions" in system
+
+    diag = (
+        await async_session.execute(
+            select(AssessmentDiagnosis).where(
+                AssessmentDiagnosis.assessment_id == asmt.id
+            )
+        )
+    ).scalar_one()
+    assert diag.analysis_mode == "already_graded"
+
+
+async def test_diagnose_wrong_only_stores_only_wrong_observations_with_total(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    """When wrong_only is active, engine response of 4 wrong out of 18 stores
+    4 ProblemObservation rows + total_problems_seen=18 on the diagnosis."""
+    _, user, asmt = await _seed_assessment_with_pages(async_session)
+    asmt.already_graded = True
+    asmt.review_all = False
+    await async_session.flush()
+    pattern = seed_minimal_taxonomy["pattern"]
+
+    fake_response = ClaudeVisionResponse(
+        text=json.dumps({
+            "overall_summary": "4 wrong of 18.",
+            "total_problems_seen": 18,
+            "problems": [
+                {
+                    "problem_number": n,
+                    "page_number": 1,
+                    "student_answer": f"wrong-{n}",
+                    "correct_answer": f"right-{n}",
+                    "is_correct": False,
+                    "error_pattern_slug": pattern.slug,
+                    "error_description": "wrong",
+                    "solution_steps": "step",
+                }
+                for n in (3, 7, 12, 15)
+            ],
+        }),
+        tokens_input=1, tokens_output=1, model="claude-sonnet-4-6",
+    )
+
+    with patch.object(
+        claude_service, "call_vision_multi",
+        new=AsyncMock(return_value=fake_response),
+    ):
+        await engine_service.diagnose_assessment(
+            assessment_id=asmt.id, user=user, db=async_session,
+        )
+
+    obs_rows = (
+        await async_session.execute(
+            select(ProblemObservation).order_by(
+                ProblemObservation.problem_number
+            )
+        )
+    ).scalars().all()
+    assert len(obs_rows) == 4
+    assert all(o.is_correct is False for o in obs_rows)
+
+    diag = (
+        await async_session.execute(
+            select(AssessmentDiagnosis).where(
+                AssessmentDiagnosis.assessment_id == asmt.id
+            )
+        )
+    ).scalar_one()
+    assert diag.total_problems_seen == 18
