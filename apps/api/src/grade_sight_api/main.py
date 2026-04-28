@@ -18,6 +18,7 @@ from .routers import billing as billing_router
 from .routers import me as me_router
 from .routers import students as students_router
 from .routers.webhooks import stripe as stripe_webhook_router
+from .services.sentry_init import setup_sentry
 
 
 @asynccontextmanager
@@ -28,6 +29,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     finally:
         await engine.dispose()
 
+
+setup_sentry(environment=settings.environment, dsn=settings.sentry_dsn)
 
 app = FastAPI(title="Grade-Sight API", version="0.0.0", lifespan=lifespan)
 
