@@ -31,6 +31,8 @@ export default async function UploadPage() {
         <AssessmentUploadForm
           initialStudents={students}
           initialAnswerKeys={answerKeys}
+          /* admin role gets parent-prominent UI for now; revisit when admin
+             features are scoped (Phase 2). */
           userRole={user.role === "teacher" ? "teacher" : "parent"}
         />
       </PageContainer>

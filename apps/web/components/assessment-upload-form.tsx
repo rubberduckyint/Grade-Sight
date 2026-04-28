@@ -147,6 +147,10 @@ export function AssessmentUploadForm({
       return;
     }
 
+    // Only send review_all when the engine will actually consider it
+    // (key OR graded mode). Otherwise the checkbox is hidden and the
+    // state may be stale.
+    const willHaveGradedSource = answerKeyId !== null || alreadyGraded;
     const intent = await createAssessmentForUpload({
       student_id: studentId,
       files: staged.map((s) => ({
@@ -155,7 +159,7 @@ export function AssessmentUploadForm({
       })),
       answer_key_id: answerKeyId ?? undefined,
       already_graded: alreadyGraded,
-      review_all: reviewAll,
+      review_all: willHaveGradedSource && reviewAll,
     });
 
     // Pair each staged file with its intent by index (server preserved order).
