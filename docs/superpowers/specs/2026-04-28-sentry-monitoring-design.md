@@ -117,8 +117,8 @@ Single function on each side. Same shape, different language. Applied to every e
 | `request.data` (POST/PUT bodies) | Often contains `student_name`, `original_filename`, answer-key page bytes, `consent_flags` |
 | `request.query_string` | Query params can include UUIDs we'd rather scope to user context only |
 | `extra.image_bytes`, `extra.images`, any `extra` containing base64 image content | Student work — never leaves our infra |
-| Any string matching email regex | Clerk emails leaking through stack traces |
-| Any string matching `https://*.r2.cloudflarestorage.com/*` | Presigned R2 URLs reveal R2 keys + grant temporary read access |
+| Email-shaped strings in `logentry.formatted`, `logentry.message`, and `exception.values[].value` | Clerk emails leaking through log lines or `raise SomeError("...email...")` stringification |
+| Strings matching `https://*.r2.cloudflarestorage.com/*` in the same fields above | Presigned R2 URLs reveal R2 keys + grant temporary read access |
 | Frame `vars` for `image`, `images`, `prompt`, `system` in `claude_service.py` frames | Anthropic call payloads |
 | `event.user.email`, `event.user.username`, `event.user.ip_address` | Whitelist allows only `user.id` + `organization_id` tag |
 
