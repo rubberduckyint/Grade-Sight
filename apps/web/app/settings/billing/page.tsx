@@ -47,7 +47,11 @@ export default async function BillingSettingsPage() {
   const trialEnd = formatDate(entitlement?.trial_ends_at);
 
   return (
-    <AppShell orgName={user.organization?.name}>
+    <AppShell
+      orgName={user.organization?.name}
+      userId={user.id}
+      organizationId={user.organization?.id ?? null}
+    >
       <PageContainer className="max-w-[720px]">
         <SectionEyebrow>Settings</SectionEyebrow>
         <div className="mt-4 mb-10">

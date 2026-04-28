@@ -54,7 +54,11 @@ export default async function DashboardPage() {
     daysRemaining <= 7;
 
   return (
-    <AppShell orgName={user.organization?.name}>
+    <AppShell
+      orgName={user.organization?.name}
+      userId={user.id}
+      organizationId={user.organization?.id ?? null}
+    >
       <PageContainer>
         {showBanner && daysRemaining !== null && (
           <div className="mb-10">

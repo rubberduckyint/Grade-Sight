@@ -45,7 +45,11 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
   if (!detail) notFound();
 
   return (
-    <AppShell orgName={user.organization?.name}>
+    <AppShell
+      orgName={user.organization?.name}
+      userId={user.id}
+      organizationId={user.organization?.id ?? null}
+    >
       <PageContainer className="max-w-[800px]">
         <SectionEyebrow>Assessment</SectionEyebrow>
         <div className="mt-4 mb-2 flex items-baseline justify-between">

@@ -12,7 +12,11 @@ export default async function StudentsPage() {
   if (!user) redirect("/sign-in");
 
   return (
-    <AppShell orgName={user.organization?.name}>
+    <AppShell
+      orgName={user.organization?.name}
+      userId={user.id}
+      organizationId={user.organization?.id ?? null}
+    >
       <PageContainer className="max-w-[800px]">
         <SectionEyebrow>Roster</SectionEyebrow>
         <div className="mt-4 mb-10">
