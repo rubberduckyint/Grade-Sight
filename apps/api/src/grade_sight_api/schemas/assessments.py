@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -76,7 +77,7 @@ class AssessmentDiagnosisResponse(BaseModel):
     latency_ms: int
     created_at: datetime
     problems: list[ProblemObservationResponse]
-    analysis_mode: str
+    analysis_mode: Literal["auto_grade", "with_key", "already_graded"]
     total_problems_seen: int | None
 
 

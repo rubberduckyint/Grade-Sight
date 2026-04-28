@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -134,7 +135,10 @@ async def _build_diagnosis_response(
         latency_ms=diagnosis.latency_ms,
         created_at=diagnosis.created_at,
         problems=problems,
-        analysis_mode=diagnosis.analysis_mode,
+        analysis_mode=cast(
+            Literal["auto_grade", "with_key", "already_graded"],
+            diagnosis.analysis_mode,
+        ),
         total_problems_seen=diagnosis.total_problems_seen,
     )
 
@@ -443,6 +447,10 @@ async def get_assessment_detail(
     if diagnosis_id is not None:
         diagnosis_payload = await _build_diagnosis_response(db, diagnosis_id)
 
+    # AnswerKey.deleted_at is intentionally NOT filtered here: per Spec 12,
+    # existing assessments that reference a soft-deleted key still display it
+    # so historical diagnoses stay readable. The picker on /upload filters
+    # deleted keys out separately via the answer_keys list endpoint.
     answer_key_payload: AssessmentDetailAnswerKey | None = None
     if assessment.answer_key_id is not None:
         ak_result = await db.execute(
@@ -452,13 +460,11 @@ async def get_assessment_detail(
             )
             .join(
                 AnswerKeyPage,
-                AnswerKeyPage.answer_key_id == AnswerKey.id,
+                (AnswerKeyPage.answer_key_id == AnswerKey.id)
+                & (AnswerKeyPage.deleted_at.is_(None)),
                 isouter=True,
             )
-            .where(
-                AnswerKey.id == assessment.answer_key_id,
-                AnswerKeyPage.deleted_at.is_(None),
-            )
+            .where(AnswerKey.id == assessment.answer_key_id)
             .group_by(AnswerKey.id)
         )
         ak_row = ak_result.one_or_none()
