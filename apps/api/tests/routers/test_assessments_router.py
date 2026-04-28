@@ -666,3 +666,100 @@ async def test_detail_includes_diagnosis_when_completed(
     assert len(body["diagnosis"]["problems"]) == 1
     p = body["diagnosis"]["problems"][0]
     assert p["error_pattern_slug"] == pattern.slug
+
+
+# ---- Answer key integration on assessments POST ----
+
+
+async def test_create_assessment_stores_answer_key_id_and_flags(
+    async_session: AsyncSession,
+) -> None:
+    user = await _seed_user(async_session)
+    student = await _seed_student(async_session, user)
+
+    # Seed an answer key in the same org
+    from grade_sight_api.models.answer_key import AnswerKey
+    key = AnswerKey(
+        uploaded_by_user_id=user.id,
+        organization_id=user.organization_id,
+        name="Test Key",
+    )
+    async_session.add(key)
+    await async_session.flush()
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/upload?sig=abc"
+    try:
+        with patch(
+            "grade_sight_api.routers.assessments.storage_service.get_upload_url",
+            new=AsyncMock(return_value=fake_url),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.post(
+                    "/api/assessments",
+                    json={
+                        "student_id": str(student.id),
+                        "files": [{"filename": "p.png", "content_type": "image/png"}],
+                        "answer_key_id": str(key.id),
+                        "already_graded": True,
+                        "review_all": False,
+                    },
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 201
+
+    asmt_rows = (
+        await async_session.execute(select(Assessment))
+    ).scalars().all()
+    assert len(asmt_rows) == 1
+    a = asmt_rows[0]
+    assert a.answer_key_id == key.id
+    assert a.already_graded is True
+    assert a.review_all is False
+
+
+async def test_create_assessment_rejects_cross_org_answer_key(
+    async_session: AsyncSession,
+) -> None:
+    org_a = Organization(name="Org A")
+    org_b = Organization(name="Org B")
+    async_session.add(org_a)
+    async_session.add(org_b)
+    await async_session.flush()
+
+    user_a = await _seed_user(async_session, org_id=org_a.id)
+    user_b = await _seed_user(async_session, org_id=org_b.id)
+    student_a = await _seed_student(async_session, user_a)
+
+    from grade_sight_api.models.answer_key import AnswerKey
+    key_b = AnswerKey(
+        uploaded_by_user_id=user_b.id,
+        organization_id=org_b.id,
+        name="Org B Key",
+    )
+    async_session.add(key_b)
+    await async_session.flush()
+
+    _override_deps(user_a, async_session)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://t"
+        ) as client:
+            r = await client.post(
+                "/api/assessments",
+                json={
+                    "student_id": str(student_a.id),
+                    "files": [{"filename": "p.png", "content_type": "image/png"}],
+                    "answer_key_id": str(key_b.id),
+                },
+                headers={"Authorization": "Bearer fake"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 403

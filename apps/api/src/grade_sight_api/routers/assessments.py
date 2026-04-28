@@ -27,6 +27,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth.dependencies import get_current_user
 from ..db import get_session
+from ..models.answer_key import AnswerKey
+from ..models.answer_key_page import AnswerKeyPage
 from ..models.assessment import Assessment, AssessmentStatus
 from ..models.assessment_diagnosis import AssessmentDiagnosis
 from ..models.assessment_page import AssessmentPage
@@ -39,6 +41,7 @@ from ..models.user import User
 from ..schemas.assessments import (
     AssessmentCreateRequest,
     AssessmentCreateResponse,
+    AssessmentDetailAnswerKey,
     AssessmentDetailPage,
     AssessmentDetailResponse,
     AssessmentDiagnosisResponse,
@@ -131,6 +134,8 @@ async def _build_diagnosis_response(
         latency_ms=diagnosis.latency_ms,
         created_at=diagnosis.created_at,
         problems=problems,
+        analysis_mode=diagnosis.analysis_mode,
+        total_problems_seen=diagnosis.total_problems_seen,
     )
 
 
@@ -280,11 +285,34 @@ async def create_assessment(
             detail="student does not belong to your organization",
         )
 
+    # Validate answer_key_id if provided
+    if payload.answer_key_id is not None:
+        key_result = await db.execute(
+            select(AnswerKey).where(
+                AnswerKey.id == payload.answer_key_id,
+                AnswerKey.deleted_at.is_(None),
+            )
+        )
+        answer_key = key_result.scalar_one_or_none()
+        if answer_key is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="answer key not found",
+            )
+        if answer_key.organization_id != user.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="answer key does not belong to your organization",
+            )
+
     assessment = Assessment(
         student_id=student.id,
         organization_id=user.organization_id,
         uploaded_by_user_id=user.id,
         status=AssessmentStatus.pending,
+        answer_key_id=payload.answer_key_id,
+        already_graded=payload.already_graded,
+        review_all=payload.review_all,
     )
     db.add(assessment)
     await db.flush()
@@ -415,6 +443,33 @@ async def get_assessment_detail(
     if diagnosis_id is not None:
         diagnosis_payload = await _build_diagnosis_response(db, diagnosis_id)
 
+    answer_key_payload: AssessmentDetailAnswerKey | None = None
+    if assessment.answer_key_id is not None:
+        ak_result = await db.execute(
+            select(
+                AnswerKey,
+                func.count(AnswerKeyPage.id).label("page_count"),
+            )
+            .join(
+                AnswerKeyPage,
+                AnswerKeyPage.answer_key_id == AnswerKey.id,
+                isouter=True,
+            )
+            .where(
+                AnswerKey.id == assessment.answer_key_id,
+                AnswerKeyPage.deleted_at.is_(None),
+            )
+            .group_by(AnswerKey.id)
+        )
+        ak_row = ak_result.one_or_none()
+        if ak_row is not None:
+            ak, page_count = ak_row
+            answer_key_payload = AssessmentDetailAnswerKey(
+                id=ak.id,
+                name=ak.name,
+                page_count=int(page_count or 0),
+            )
+
     return AssessmentDetailResponse(
         id=assessment.id,
         student_id=assessment.student_id,
@@ -423,6 +478,7 @@ async def get_assessment_detail(
         uploaded_at=assessment.uploaded_at,
         pages=detail_pages,
         diagnosis=diagnosis_payload,
+        answer_key=answer_key_payload,
     )
 
 

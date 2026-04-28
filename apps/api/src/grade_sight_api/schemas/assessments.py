@@ -18,6 +18,9 @@ class AssessmentFile(BaseModel):
 class AssessmentCreateRequest(BaseModel):
     student_id: UUID
     files: list[AssessmentFile]
+    answer_key_id: UUID | None = None
+    already_graded: bool = False
+    review_all: bool = False
 
 
 class AssessmentPageUploadIntent(BaseModel):
@@ -73,6 +76,14 @@ class AssessmentDiagnosisResponse(BaseModel):
     latency_ms: int
     created_at: datetime
     problems: list[ProblemObservationResponse]
+    analysis_mode: str
+    total_problems_seen: int | None
+
+
+class AssessmentDetailAnswerKey(BaseModel):
+    id: UUID
+    name: str
+    page_count: int
 
 
 class AssessmentDetailResponse(BaseModel):
@@ -83,3 +94,4 @@ class AssessmentDetailResponse(BaseModel):
     uploaded_at: datetime
     pages: list[AssessmentDetailPage]
     diagnosis: AssessmentDiagnosisResponse | None
+    answer_key: AssessmentDetailAnswerKey | None
