@@ -44,9 +44,17 @@ export function AnswerKeyUploadForm({
     stagedRef.current = staged;
   }, [staged]);
 
+  const handedOverUrlsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
+    const stagedSnap = stagedRef;
+    const handedSnap = handedOverUrlsRef;
     return () => {
-      stagedRef.current.forEach((s) => URL.revokeObjectURL(s.previewUrl));
+      stagedSnap.current.forEach((s) => {
+        if (!handedSnap.current.has(s.previewUrl)) {
+          URL.revokeObjectURL(s.previewUrl);
+        }
+      });
     };
   }, []);
 
@@ -156,12 +164,20 @@ export function AnswerKeyUploadForm({
       );
       const failed = unfinished.filter((_, i) => !outcomes[i]?.ok);
       if (failed.length === 0) {
-        // Notify parent picker so the new key can be auto-selected.
+        // Hand the first page's blob URL to the parent picker as a
+        // placeholder thumbnail. Track it in handedOverUrlsRef so our
+        // cleanup doesn't revoke it; the picker now owns its lifecycle
+        // (and will revoke it when its own state replaces it after a
+        // server refresh fetches the real R2 thumbnail URL).
+        const placeholderThumb = pairs[0]?.staged.previewUrl ?? "";
+        if (placeholderThumb) {
+          handedOverUrlsRef.current.add(placeholderThumb);
+        }
         onCreated({
           id: intent.answer_key_id,
           name: name.trim(),
           page_count: pairs.length,
-          first_page_thumbnail_url: pairs[0]?.staged.previewUrl ?? "",
+          first_page_thumbnail_url: placeholderThumb,
           created_at: new Date().toISOString(),
         });
         return;

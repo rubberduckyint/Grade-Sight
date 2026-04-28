@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { AnswerKeyUploadForm } from "@/components/answer-key-upload-form";
@@ -18,11 +19,38 @@ export function AnswerKeyPicker({
   value,
   onChange,
 }: AnswerKeyPickerProps) {
-  const [keys, setKeys] = useState<AnswerKey[]>(initialKeys);
+  // Optimistic keys are those just created locally and not yet present
+  // in server-fetched initialKeys. We keep them around (state never
+  // shrinks here) but only display the ones that aren't yet superseded
+  // by an initialKeys entry. Cleanup of the blob: URL happens in an
+  // effect when initialKeys catches up.
+  const [optimisticKeys, setOptimisticKeys] = useState<AnswerKey[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [query, setQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const router = useRouter();
+
+  // When initialKeys catches up to an optimistic entry, revoke its
+  // blob: placeholder URL. We don't setState here (forbidden by lint);
+  // the optimistic entry is filtered out of `keys` derivation below.
+  useEffect(() => {
+    for (const o of optimisticKeys) {
+      if (!o.first_page_thumbnail_url.startsWith("blob:")) continue;
+      const replaced = initialKeys.find((k) => k.id === o.id);
+      if (replaced) {
+        URL.revokeObjectURL(o.first_page_thumbnail_url);
+      }
+    }
+  }, [initialKeys, optimisticKeys]);
+
+  const pendingOptimistic = optimisticKeys.filter(
+    (o) => !initialKeys.some((k) => k.id === o.id),
+  );
+  const keys =
+    pendingOptimistic.length === 0
+      ? initialKeys
+      : [...pendingOptimistic, ...initialKeys];
 
   const filtered = keys.filter((k) =>
     k.name.toLowerCase().includes(query.toLowerCase().trim()),
@@ -31,9 +59,15 @@ export function AnswerKeyPicker({
   const selected = keys.find((k) => k.id === value) ?? null;
 
   function handleCreated(newKey: AnswerKey): void {
-    setKeys((prev) => [newKey, ...prev]);
+    // Optimistic: show the new key immediately with the placeholder
+    // blob URL the form handed us (looks instant to the user).
+    setOptimisticKeys((prev) => [newKey, ...prev]);
     onChange(newKey.id);
     setIsAdding(false);
+    // Trigger a server refresh so the parent server component re-fetches
+    // answer keys with real R2 thumbnail URLs. The effect above will
+    // then drop our optimistic entry and revoke the blob: URL.
+    router.refresh();
   }
 
   function handleDelete(id: string): void {
@@ -44,10 +78,19 @@ export function AnswerKeyPicker({
     startTransition(async () => {
       try {
         await deleteAnswerKey(id);
-        setKeys((prev) => prev.filter((k) => k.id !== id));
+        // Drop any optimistic copy with this id, and revoke its blob URL.
+        setOptimisticKeys((prev) => {
+          const removed = prev.find((k) => k.id === id);
+          if (removed && removed.first_page_thumbnail_url.startsWith("blob:")) {
+            URL.revokeObjectURL(removed.first_page_thumbnail_url);
+          }
+          return prev.filter((k) => k.id !== id);
+        });
         if (value === id) {
           onChange(null);
         }
+        // Refresh server-fetched keys so the deleted one disappears.
+        router.refresh();
       } catch {
         window.alert("Could not delete — please try again.");
       } finally {
