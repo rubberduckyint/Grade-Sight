@@ -43,3 +43,20 @@ def test_attach_sentry_user_context_handles_null_organization() -> None:
 
     mock_set_user.assert_called_once_with({"id": "11111111-1111-1111-1111-111111111111"})
     mock_set_tag.assert_not_called()
+
+
+def test_attach_sentry_user_context_swallows_sdk_exceptions() -> None:
+    """If sentry_sdk.set_user raises, the helper must not propagate.
+
+    Privacy/observability infra must never break the auth hot path. A
+    misconfigured Sentry should produce missing Sentry events, not 500s.
+    """
+    user = MagicMock()
+    user.id = UUID("11111111-1111-1111-1111-111111111111")
+    user.organization_id = UUID("22222222-2222-2222-2222-222222222222")
+
+    with patch.object(
+        dependencies.sentry_sdk, "set_user", side_effect=RuntimeError("boom")
+    ):
+        # Must not raise.
+        dependencies._attach_sentry_user_context(user)

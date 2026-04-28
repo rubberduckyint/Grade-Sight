@@ -122,10 +122,17 @@ def _attach_sentry_user_context(user: User) -> None:
     Only the internal User.id UUID and organization_id are sent — no email,
     no name, no Clerk identifiers. Sentry's hub model scopes this to the
     current request, so values don't leak across requests.
+
+    Wrapped in try/except: a Sentry SDK fault must NEVER break the auth
+    hot path. Privacy/observability infra is best-effort; a 500 here would
+    mean every authenticated request fails on a misconfigured Sentry.
     """
-    sentry_sdk.set_user({"id": str(user.id)})
-    if user.organization_id is not None:
-        sentry_sdk.set_tag("organization_id", str(user.organization_id))
+    try:
+        sentry_sdk.set_user({"id": str(user.id)})
+        if user.organization_id is not None:
+            sentry_sdk.set_tag("organization_id", str(user.organization_id))
+    except Exception:
+        logger.debug("Failed to attach Sentry user context", exc_info=True)
 
 
 async def _cleanup_partial_lazy_upsert(
