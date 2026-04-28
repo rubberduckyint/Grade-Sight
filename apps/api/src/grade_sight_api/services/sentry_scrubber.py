@@ -6,8 +6,8 @@ than leak PII).
 
 What this strips:
 - request headers/cookies/body/query_string (all bulk-removed)
-- email-shaped strings anywhere in messages
-- presigned R2 URLs anywhere in messages
+- email-shaped strings in logentry message fields and exception value strings
+- presigned R2 URLs in logentry message fields and exception value strings
 - frame vars 'image', 'images', 'prompt', 'system' in claude_service frames
 - user.email / user.username / user.ip_address (only user.id allowed)
 
@@ -60,6 +60,15 @@ def scrub_event(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] |
                 value = logentry.get(key)
                 if isinstance(value, str):
                     logentry[key] = _redact_string(value)
+
+        # 3b. Redact email + R2 URL patterns from exception value strings.
+        exc_for_msg = event.get("exception")
+        if isinstance(exc_for_msg, dict):
+            for exc_val in exc_for_msg.get("values") or []:
+                if isinstance(exc_val, dict):
+                    raw_val = exc_val.get("value")
+                    if isinstance(raw_val, str):
+                        exc_val["value"] = _redact_string(raw_val)
 
         # 4. Remove PII-shaped frame vars in claude_service frames.
         exc = event.get("exception")

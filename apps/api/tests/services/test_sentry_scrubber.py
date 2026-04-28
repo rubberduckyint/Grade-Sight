@@ -82,6 +82,7 @@ def test_scrub_strips_image_frame_vars_in_claude_service() -> None:
                                 "function": "call_vision",
                                 "vars": {
                                     "image": "<base64 megabytes>",
+                                    "images": "<list of base64>",
                                     "prompt": "Grade this work",
                                     "system": "You are a math grader",
                                     "model": "claude-sonnet-4-6",
@@ -97,10 +98,60 @@ def test_scrub_strips_image_frame_vars_in_claude_service() -> None:
     assert cleaned is not None
     frame = cleaned["exception"]["values"][0]["stacktrace"]["frames"][0]
     assert "image" not in frame["vars"]
+    assert "images" not in frame["vars"]
     assert "prompt" not in frame["vars"]
     assert "system" not in frame["vars"]
     # Non-PII frame var preserved
     assert frame["vars"]["model"] == "claude-sonnet-4-6"
+
+
+def test_scrub_preserves_frame_vars_in_non_claude_service_frames() -> None:
+    event: dict[str, Any] = {
+        "exception": {
+            "values": [
+                {
+                    "stacktrace": {
+                        "frames": [
+                            {
+                                "module": "grade_sight_api.routers.assessments",
+                                "function": "create_assessment",
+                                "vars": {
+                                    "image": "<some payload>",
+                                    "prompt": "should not be stripped here",
+                                },
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+    cleaned = scrub_event(event, hint={})
+    assert cleaned is not None
+    frame = cleaned["exception"]["values"][0]["stacktrace"]["frames"][0]
+    # Frame vars are only stripped in claude_service frames; other modules untouched.
+    assert frame["vars"]["image"] == "<some payload>"
+    assert frame["vars"]["prompt"] == "should not be stripped here"
+
+
+def test_scrub_redacts_emails_and_r2_urls_in_exception_values() -> None:
+    event: dict[str, Any] = {
+        "exception": {
+            "values": [
+                {
+                    "type": "RuntimeError",
+                    "value": "Failed to fetch lily@example.com from https://abc.r2.cloudflarestorage.com/bucket/key?sig=foo",
+                }
+            ]
+        }
+    }
+    cleaned = scrub_event(event, hint={})
+    assert cleaned is not None
+    redacted = cleaned["exception"]["values"][0]["value"]
+    assert "lily@example.com" not in redacted
+    assert "r2.cloudflarestorage.com" not in redacted
+    assert "[redacted-email]" in redacted
+    assert "[redacted-r2-url]" in redacted
 
 
 def test_scrub_strips_user_email_username_ip() -> None:
