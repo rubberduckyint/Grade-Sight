@@ -80,6 +80,8 @@ Each scrubber module is one function with one job, fully unit-testable on synthe
 | `SENTRY_ORG` | frontend build-time | source map upload | `grade-sight` | Hardcoded fallback in `next.config.ts` |
 | `SENTRY_PROJECT` | frontend build-time | source map upload | `grade-sight-web` | Hardcoded fallback in `next.config.ts` |
 
+Note: `@sentry/nextjs` v9 renamed the source-map cleanup flag from `hideSourceMaps: true` to `sourcemaps: { deleteSourcemapsAfterUpload: true }`. Same behavior — uploads maps to Sentry, then strips them from `.next/static` so they're not served publicly.
+
 `apps/api/.env.example` already reserves `# SENTRY_DSN=`. We update the comment to note prod-only behavior.
 
 `apps/web/env.ts` (the `@t3-oss/env-nextjs` schema) gets `NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional()`.
