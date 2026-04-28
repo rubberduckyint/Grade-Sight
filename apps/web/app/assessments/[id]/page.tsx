@@ -68,6 +68,15 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
             {detail.pages.length}{" "}
             {detail.pages.length === 1 ? "page" : "pages"}
           </span>
+          {detail.diagnosis && (
+            <>
+              <span aria-hidden="true">·</span>
+              <ModeBadge
+                mode={detail.diagnosis.analysis_mode}
+                answerKey={detail.answer_key}
+              />
+            </>
+          )}
         </div>
 
         {/* Diagnostic section */}
@@ -136,5 +145,31 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
         </ul>
       </PageContainer>
     </AppShell>
+  );
+}
+
+function ModeBadge({
+  mode,
+  answerKey,
+}: {
+  mode: "auto_grade" | "with_key" | "already_graded";
+  answerKey: { id: string; name: string; page_count: number } | null;
+}) {
+  const label =
+    mode === "auto_grade"
+      ? "Auto-graded"
+      : mode === "already_graded"
+        ? "Reading teacher markings"
+        : answerKey
+          ? `Graded with ${answerKey.name}`
+          : "Graded with answer key";
+
+  return (
+    <Badge
+      variant="secondary"
+      className="font-mono uppercase tracking-[0.12em]"
+    >
+      {label}
+    </Badge>
   );
 }

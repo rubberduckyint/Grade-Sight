@@ -9,7 +9,13 @@ export interface DiagnosisDisplayProps {
 export function DiagnosisDisplay({ diagnosis }: DiagnosisDisplayProps) {
   return (
     <div className="my-12">
-      <SectionEyebrow>Diagnostic results</SectionEyebrow>
+      <SectionEyebrow>
+        {diagnosis.total_problems_seen != null && diagnosis.problems.length > 0
+          ? `${diagnosis.problems.length} of ${diagnosis.total_problems_seen} problems need review`
+          : diagnosis.total_problems_seen != null && diagnosis.problems.length === 0
+            ? `All ${diagnosis.total_problems_seen} problems correct`
+            : "Diagnostic results"}
+      </SectionEyebrow>
       {diagnosis.overall_summary && (
         <p className="mt-3 font-serif text-lg text-ink">
           {diagnosis.overall_summary}
