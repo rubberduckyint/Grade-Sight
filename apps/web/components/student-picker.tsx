@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import type { Student } from "@/lib/types";
 import { createStudent } from "@/lib/actions";
 
+const GRADE_OPTIONS = [5, 6, 7, 8, 9, 10, 11, 12] as const;
+
 export interface StudentPickerProps {
   students: Student[];
   value: string | null;
@@ -25,8 +27,6 @@ export function StudentPicker({
   const [newGrade, setNewGrade] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
-
-  const GRADE_OPTIONS = [5, 6, 7, 8, 9, 10, 11, 12] as const;
 
   const filtered = students.filter((s) =>
     s.full_name.toLowerCase().includes(query.toLowerCase().trim()),
