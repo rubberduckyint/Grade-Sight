@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grade Sight — Session 1 · The Brief</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap" />
+<style>
+  :root {
+    --paper: oklch(0.985 0.006 82);
+    --paper-soft: oklch(0.965 0.008 82);
+    --paper-deep: oklch(0.94 0.012 82);
+    --rule: oklch(0.88 0.012 82);
+    --rule-soft: oklch(0.92 0.01 82);
+    --ink: oklch(0.22 0.015 75);
+    --ink-soft: oklch(0.42 0.015 75);
+    --ink-mute: oklch(0.58 0.012 75);
+    --accent: oklch(0.42 0.09 252);
+    --insight: oklch(0.72 0.12 72);
+    --green: oklch(0.62 0.18 145);
+    --mark: oklch(0.56 0.15 28);
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 18px; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 80px 56px 120px; }
+  .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.722rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-mute); }
+  h1 { font-family: 'Source Serif 4', Georgia, serif; font-size: 3.4rem; font-weight: 400; letter-spacing: -0.024em; line-height: 1.02; margin: 18px 0 26px; }
+  h2 { font-family: 'Source Serif 4', Georgia, serif; font-size: 2rem; font-weight: 400; letter-spacing: -0.02em; margin: 0 0 8px; }
+  h3 { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.333rem; font-weight: 500; letter-spacing: -0.01em; margin: 0 0 6px; }
+  .lead { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.444rem; font-weight: 300; color: var(--ink-soft); line-height: 1.5; max-width: 720px; }
+  p { margin: 0 0 18px; max-width: 680px; }
+  ul, ol { padding-left: 22px; max-width: 680px; }
+  li { margin-bottom: 10px; }
+  .section { padding: 56px 0; border-top: 1px solid var(--rule-soft); }
+  .section:first-of-type { border-top: 0; padding-top: 28px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 22px; }
+  .card { border: 1px solid var(--rule); border-radius: 4px; padding: 26px 28px; background: var(--paper); }
+  .card .role { font-family: 'JetBrains Mono', monospace; font-size: 0.722rem; letter-spacing: 0.14em; color: var(--accent); text-transform: uppercase; }
+  .card h3 { margin-top: 8px; }
+  .card .meta { font-size: 0.889rem; color: var(--ink-mute); margin-top: 4px; }
+  .card p { font-size: 1rem; color: var(--ink-soft); margin-top: 14px; }
+  .principle { display: grid; grid-template-columns: 56px 1fr; gap: 22px; padding: 22px 0; border-bottom: 1px solid var(--rule-soft); }
+  .principle:last-child { border-bottom: 0; }
+  .principle .num { font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-size: 2rem; font-weight: 400; color: var(--ink-mute); line-height: 1; padding-top: 4px; }
+  .principle h3 { margin-bottom: 4px; }
+  .principle p { color: var(--ink-soft); margin: 0; font-size: 1rem; }
+  blockquote { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.222rem; font-style: italic; color: var(--ink-soft); border-left: 2px solid var(--accent); margin: 18px 0; padding: 6px 0 6px 20px; line-height: 1.5; max-width: 660px; }
+  .pull { background: var(--paper-soft); border: 1px solid var(--rule-soft); border-radius: 4px; padding: 22px 26px; margin: 24px 0; }
+  .pull .eyebrow { color: var(--accent); }
+  .pull p:last-child { margin-bottom: 0; }
+  .pull p { font-size: 1rem; color: var(--ink-soft); }
+  .moments { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 18px; }
+  .moment { border-top: 2px solid var(--ink); padding-top: 16px; }
+  .moment .when { font-family: 'JetBrains Mono', monospace; font-size: 0.722rem; letter-spacing: 0.12em; color: var(--ink-mute); text-transform: uppercase; }
+  .moment h4 { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.222rem; font-weight: 500; margin: 6px 0 8px; }
+  .moment p { font-size: 0.944rem; color: var(--ink-soft); }
+  .donts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .donts .item { padding: 14px 18px; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); font-size: 0.944rem; }
+  .donts .label { font-family: 'JetBrains Mono', monospace; font-size: 0.667rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .donts .label.do { color: var(--green); }
+  .donts .label.dont { color: var(--mark); }
+  .donts strong { color: var(--ink); font-weight: 500; }
+  .donts p { margin: 6px 0 0; color: var(--ink-soft); font-size: 0.944rem; }
+  .toc { background: var(--paper-soft); border: 1px solid var(--rule-soft); border-radius: 4px; padding: 22px 26px; margin: 32px 0 0; }
+  .toc ol { margin: 8px 0 0; padding-left: 22px; }
+  .toc li { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.111rem; margin-bottom: 6px; color: var(--ink-soft); }
+  .toc li strong { color: var(--ink); font-weight: 500; }
+  .roadmap { margin-top: 22px; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+  .roadmap-row { display: grid; grid-template-columns: 110px 1fr 240px; padding: 18px 22px; border-top: 1px solid var(--rule-soft); align-items: baseline; gap: 18px; }
+  .roadmap-row:first-child { border-top: 0; background: var(--paper-soft); }
+  .roadmap-row .when { font-family: 'JetBrains Mono', monospace; font-size: 0.722rem; letter-spacing: 0.12em; color: var(--ink-mute); text-transform: uppercase; }
+  .roadmap-row .what { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.111rem; font-weight: 500; color: var(--ink); }
+  .roadmap-row .out { font-size: 0.889rem; color: var(--ink-soft); }
+  .sig { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .sig svg { flex-shrink: 0; }
+  .sig span { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.222rem; font-weight: 500; letter-spacing: -0.012em; }
+  .signoff { margin-top: 64px; padding-top: 28px; border-top: 1px solid var(--rule); color: var(--ink-mute); font-size: 0.944rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="sig">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+      <defs>
+        <mask id="ringMaskBrief"><rect width="34" height="34" fill="white"/>
+          <path d="M 7 18 Q 11 22 14 24 Q 18 18 28 6" stroke="black" stroke-width="7" stroke-linecap="round" fill="none"/>
+        </mask>
+      </defs>
+      <g mask="url(#ringMaskBrief)"><circle cx="17" cy="17" r="13" fill="none" stroke="oklch(0.62 0.18 145)" stroke-width="3"/></g>
+      <path d="M 7 18 Q 11 22 14 24 Q 18 18 28 6" fill="none" stroke="oklch(0.62 0.18 145)" stroke-width="3.4" stroke-linecap="round"/>
+    </svg>
+    <span>Grade Sight</span>
+  </div>
+
+  <div class="eyebrow" style="margin-top: 36px;">Session 1 of 6 · The brief · Apr 28 2026</div>
+  <h1>Who we are designing for, and the rules we won't break.</h1>
+  <p class="lead">Before any wireframe. This document is the rubric every screen in the next five sessions will be graded against. Read it, push back on anything that doesn't match what you're hearing from real parents and teachers, and we'll lock it.</p>
+
+  <div class="toc">
+    <div class="eyebrow">In this document</div>
+    <ol>
+      <li><strong>The two audiences</strong> — who they are, where they are, what they bring</li>
+      <li><strong>Six moments</strong> — the actual times someone opens Grade Sight</li>
+      <li><strong>Six principles</strong> — the rubric every wireframe must answer to</li>
+      <li><strong>Tone &amp; copy posture</strong> — what we say (and never say)</li>
+      <li><strong>What this brief is not</strong> — honest limits</li>
+      <li><strong>The path from here</strong> — sessions 2–6</li>
+    </ol>
+  </div>
+
+  <!-- ───────────────────────── 1 · AUDIENCES ───────────────────────── -->
+  <section class="section">
+    <div class="eyebrow">01 · Audiences</div>
+    <h2>Two people. Same product. Different Tuesdays.</h2>
+    <p>The product ships from day one for both. The chrome is one system. The <em>moments</em> are not — and that's where the design has to bend.</p>
+
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="role">PARENT</div>
+        <h3>The worried parent on a weeknight.</h3>
+        <div class="meta">38–55 · usually mom · public-school zip · 1–3 kids · phone in hand</div>
+        <p>
+          She's not a math person. The quiz came home in a backpack with a 72% on it and a few red marks. She doesn't want to "help with homework" — she wants to know <em>what</em> she's looking at. Is this normal? Is he falling behind? Is it carelessness or is something genuinely missing?
+        </p>
+        <p>
+          She'll photograph the paper on the kitchen counter under bad light. She has 8 minutes before dinner. She isn't going to read instructions. If the product makes her feel dumb, she's gone.
+        </p>
+        <p style="color: var(--ink); font-style: italic;">
+          What she's <em>actually</em> buying: relief. A sentence she can read once and feel okay.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="role">TEACHER</div>
+        <h3>The math teacher with a stack of quizzes.</h3>
+        <div class="meta">26–58 · 90+ students across 4–5 sections · weeknights and Sunday afternoons · laptop, sometimes iPad</div>
+        <p>
+          He grades for free, on his own time, because the platform his school pays for produces a number. He needs the patterns. Of the 27 kids who got #4 wrong, are they wrong the same way? Because the answer changes whether he reteaches the lesson Tuesday or pulls four kids aside.
+        </p>
+        <p>
+          He is allergic to bullshit. He has watched five edtech demos this year and hated all of them. He will trust a tool that respects his time and his judgment. He will instantly distrust anything that calls students "learners" or talks about "growth mindset" without a number behind it.
+        </p>
+        <p style="color: var(--ink); font-style: italic;">
+          What he's <em>actually</em> buying: leverage. The next intervention, found before he had to find it himself.
+        </p>
+      </div>
+
+    </div>
+
+    <div class="pull">
+      <div class="eyebrow">An honest note about "research"</div>
+      <p>
+        I'm not citing a Pew survey or a "73% of parents say…" stat. The two portraits above are synthesized from what's defensibly true about this audience: secondary-math parental engagement is dominated by mothers in their 40s checking work after school; public-school math teachers carry 90–150 students across sections and grade on personal time; both groups have low patience for product-speak; both have phones, but only one is on a laptop most of the time.
+      </p>
+      <p>
+        If anything in either portrait conflicts with what <em>you're</em> hearing from real users — say so. They're a starting point, not data.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 2 · MOMENTS ───────────────────────── -->
+  <section class="section">
+    <div class="eyebrow">02 · Moments</div>
+    <h2>When does a person actually open this?</h2>
+    <p>Designs should be tuned to these six moments. Not "the parent journey" or "the teacher journey" abstractly — these specific Tuesday-night and Sunday-afternoon situations.</p>
+
+    <div class="moments">
+
+      <div class="moment">
+        <div class="when">PARENT · 8:14 PM TUESDAY</div>
+        <h4>"Got home, found this in the backpack."</h4>
+        <p>One quiz. Already graded. She wants a sentence about what to do tomorrow. <strong>Optimize:</strong> low friction to first answer, mobile-first, warm tone.</p>
+      </div>
+
+      <div class="moment">
+        <div class="when">PARENT · SATURDAY 9 AM</div>
+        <h4>"He has a unit test Monday."</h4>
+        <p>Pulls up his student page. Wants to see what's been recurring. <strong>Optimize:</strong> longitudinal pattern view; "what to practice this weekend" suggestion.</p>
+      </div>
+
+      <div class="moment">
+        <div class="when">TEACHER · SUNDAY 4 PM</div>
+        <h4>"Twenty-seven quizzes from 4th period."</h4>
+        <p>Batch upload. Class-level pattern emerging. <strong>Optimize:</strong> fast multi-upload, clear progress, class roll-up. (Phase 2 surface; design context only.)</p>
+      </div>
+
+      <div class="moment">
+        <div class="when">TEACHER · WEEKNIGHT 10 PM</div>
+        <h4>"One kid I'm worried about."</h4>
+        <p>Single-student deep view. Wants the pattern across three weeks. <strong>Optimize:</strong> /students/[id] timeline, intervention suggestion.</p>
+      </div>
+
+      <div class="moment">
+        <div class="when">EITHER · UPLOAD MOMENT</div>
+        <h4>"Photograph and submit."</h4>
+        <p>The photo is taken on a phone with the paper sitting on a kitchen counter or a teacher's desk. Imperfect lighting. <strong>Optimize:</strong> tolerant capture, no friction to "submit and wait."</p>
+      </div>
+
+      <div class="moment">
+        <div class="when">EITHER · THE REVEAL</div>
+        <h4>"The result is back."</h4>
+        <p>The diagnosis page. The single moment the product earns the next visit. <strong>Optimize:</strong> aggregate first, pattern second, problem third. Not a list of cards.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 3 · PRINCIPLES ───────────────────────── -->
+  <section class="section">
+    <div class="eyebrow">03 · Principles</div>
+    <h2>Six rules. Every wireframe answers to these.</h2>
+    <p>If a screen breaks one, it goes back to the bench. If two screens fight, the higher-numbered principle wins.</p>
+
+    <div class="principle">
+      <div class="num">i</div>
+      <div>
+        <h3>Lead with the sentence.</h3>
+        <p>Every diagnosis surface should answer in one sentence before it answers in twelve. The aggregate insight is the headline; the cards are the supporting paragraphs. A parent who reads only the first sentence should still walk away with the right thing to do.</p>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="num">ii</div>
+      <div>
+        <h3>Wrong is interesting, not shameful.</h3>
+        <p>No red/green right-wrong coloring on student work. Errors get the amber "insight" treatment because they are the product's whole point. Use <code style="background: var(--paper-soft); padding: 1px 6px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 0.833em;">mark</code> only for genuine destructive states (delete, failed upload).</p>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="num">iii</div>
+      <div>
+        <h3>The phone is the primary surface for parents.</h3>
+        <p>Parent uploads happen on a 375-wide viewport in a kitchen. Every parent-prominent flow is designed for the phone first. Teacher-heavy flows (batch upload, archive) can lead with the laptop and degrade gracefully.</p>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="num">iv</div>
+      <div>
+        <h3>Privacy is a surface, not a footnote.</h3>
+        <p>The trust commitments — never sell, US-only data, 30-day deletion, SDPC NDPA — show up on at least three visible surfaces post-signup, not just the policy page. A parent or teacher should never have to dig to feel safe.</p>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="num">v</div>
+      <div>
+        <h3>Editorial, not edtech.</h3>
+        <p>Source Serif 4 carries the human voice. Inter does the work. The product reads like a thoughtful paperback, not a SaaS dashboard. Avoid: graduation caps, sparkle icons, "AI-powered" anywhere on the surface, gradient hero blobs, "growth mindset" copy.</p>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="num">vi</div>
+      <div>
+        <h3>The teacher is a peer.</h3>
+        <p>The engine is correct most of the time, not all of the time. Every diagnosis the engine produces is editable by the teacher in-place. The product never tells a teacher their judgment is wrong; it offers what it sees and gets out of the way.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 4 · TONE ───────────────────────── -->
+  <section class="section">
+    <div class="eyebrow">04 · Tone</div>
+    <h2>What we say. What we don't.</h2>
+
+    <p>The product's voice is a thoughtful colleague who has already read the paper. Confident, calm, specific. Never breezy, never solemn.</p>
+
+    <blockquote>
+      "Marcus got 14 of 18. Three of the four he missed share the same pattern: he's losing the negative when he distributes. That's a 5-minute conversation, not a tutor."
+    </blockquote>
+
+    <div class="donts">
+      <div class="item">
+        <span class="label do">DO · PARENT-FACING</span>
+        <p><strong>"Three of these four come from the same place."</strong> Specific. Empowering. Implies action without prescribing it.</p>
+      </div>
+      <div class="item">
+        <span class="label dont">DON'T</span>
+        <p><strong>"Your child needs to work on their math skills."</strong> Generic, parental, vaguely shaming.</p>
+      </div>
+      <div class="item">
+        <span class="label do">DO · TEACHER-FACING</span>
+        <p><strong>"4th period is missing #6. Same pattern, twenty-three of twenty-seven."</strong> Quantified. Class-aware. Speaks his language.</p>
+      </div>
+      <div class="item">
+        <span class="label dont">DON'T</span>
+        <p><strong>"Time to celebrate growth! 🎉"</strong> Anything emoji. Anything that calls students "learners." Anything ending in an exclamation.</p>
+      </div>
+      <div class="item">
+        <span class="label do">DO · ON ERROR</span>
+        <p><strong>"The image was blurry — try again, paper flat under good light."</strong> Specific instruction, no apology theater.</p>
+      </div>
+      <div class="item">
+        <span class="label dont">DON'T</span>
+        <p><strong>"Oops! Something went wrong. 😔"</strong> No "Oops." No "Whoops." No emoji. Ever.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 5 · LIMITS ───────────────────────── -->
+  <section class="section">
+    <div class="eyebrow">05 · Limits</div>
+    <h2>What this brief is not.</h2>
+    <ul>
+      <li><strong>Not a usability study.</strong> Nothing here is tested against real parents and teachers. It's a structured guess, calibrated to what's defensibly known. Anything that conflicts with your actual user calls beats anything in this document.</li>
+      <li><strong>Not implementation-bound.</strong> Phase 2 and 3 surfaces (cohort pulse, admin, LMS, district views) are sketched only where they help frame the v1 work. We won't wireframe them in this pass.</li>
+      <li><strong>Not a content spec.</strong> Real headline copy and microcopy will land in the wireframes themselves and be refined when content lands. The strings here are placeholders that demonstrate tone.</li>
+      <li><strong>Not the design system.</strong> The Foundation and Handoff documents from the previous pass remain canonical for tokens, type, components. This brief sits on top.</li>
+    </ul>
+  </section>
+
+  <!-- ───────────────────────── 6 · ROADMAP ───────────────────────── -->
+  <section class="section">
+    <div class="eyebrow">06 · The path from here</div>
+    <h2>Sessions two through six.</h2>
+    <p>Each session ends with one HTML canvas you can review in a sitting and one paragraph of next-step questions for you. Session 6 is the only one where I add a handoff document.</p>
+
+    <div class="roadmap">
+      <div class="roadmap-row">
+        <div class="when">SESSION</div>
+        <div class="what">SUBJECT</div>
+        <div class="out">DELIVERABLE</div>
+      </div>
+      <div class="roadmap-row">
+        <div class="when">02 · Next</div>
+        <div class="what">Foundation: nav, first-run, dashboard v2</div>
+        <div class="out">Grade Sight Foundation v2.html</div>
+      </div>
+      <div class="roadmap-row">
+        <div class="when">03</div>
+        <div class="what">/students/[id] — the longitudinal page</div>
+        <div class="out">Grade Sight Student Page.html</div>
+      </div>
+      <div class="roadmap-row">
+        <div class="when">04</div>
+        <div class="what">Diagnosis narrative + inline correction + with-key viewer</div>
+        <div class="out">Grade Sight Diagnosis v2.html</div>
+      </div>
+      <div class="roadmap-row">
+        <div class="when">05</div>
+        <div class="what">Archive · answer-key library · privacy surface · empty states</div>
+        <div class="out">Grade Sight Supporting.html</div>
+      </div>
+      <div class="roadmap-row">
+        <div class="when">06</div>
+        <div class="what">Mobile pass + Claude Code handoff doc</div>
+        <div class="out">Grade Sight Mobile.html · Grade Sight Handoff v2.html</div>
+      </div>
+    </div>
+
+    <div class="pull" style="margin-top: 28px;">
+      <div class="eyebrow">Decisions for this session</div>
+      <p>
+        Approve the two audience portraits (or correct them), the six principles, and the tone posture — and I'll start Session 02. If anything in here doesn't fit what you're hearing from real users, this is the document we change. Everything that follows hangs off it.
+      </p>
+    </div>
+  </section>
+
+  <div class="signoff">
+    Grade Sight · Session 1 of 6 · 2026-04-28 · Internal design brief
+  </div>
+
+</div>
+</body>
+</html>

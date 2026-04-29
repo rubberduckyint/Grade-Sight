@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grade Sight — Session A foundation</title>
+<style>html, body { margin: 0; padding: 0; background: #f0eee9; }</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" fill="#f5f3ee"/>
+    <g transform="translate(60,60)">
+      <circle cx="40" cy="40" r="34" fill="none" stroke="#2a2622" stroke-width="3"/>
+      <circle cx="40" cy="40" r="14" fill="#2a2622"/>
+    </g>
+    <text x="100" y="170" text-anchor="middle" font-family="Georgia, serif" font-size="18" fill="#2a2622">Grade Sight</text>
+  </svg>
+</template>
+
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="shared-styles.jsx"></script>
+<script type="text/babel" src="foundation-tokens.jsx"></script>
+<script type="text/babel" src="foundation-screens.jsx"></script>
+<script type="text/babel" data-presets="react">
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="tokens" title="Foundation · tokens + fonts" subtitle="Everything in the app pulls from this block. All four fonts are Google Fonts.">
+        <DCArtboard id="tokens" label="Tokens — paste into globals.css" width={820} height={1600}>
+          <TokensCard />
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="surfaces" title="Core surfaces" subtitle="Landing, dashboard shell, auth wrappers, and system pages — all in the Editorial theme.">
+        <DCArtboard id="landing" label="/ — Landing (scope-correct · privacy trust band)" width={1200} height={1000}>
+          <FoundationLanding />
+        </DCArtboard>
+        <DCArtboard id="dashboard" label="/dashboard — AppShell + header + empty-state + trial banner" width={1200} height={760}>
+          <DashboardShell />
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="auth" title="Auth wrappers · Clerk appearance hints">
+        <DCArtboard id="signin" label="/sign-in — editorial panel + Clerk mount" width={1200} height={720}>
+          <AuthShell mode="signin" />
+        </DCArtboard>
+        <DCArtboard id="parent" label="/sign-up/parent" width={1200} height={720}>
+          <AuthShell mode="parent" />
+        </DCArtboard>
+        <DCArtboard id="teacher" label="/sign-up/teacher" width={1200} height={720}>
+          <AuthShell mode="teacher" />
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="system" title="System pages · loading / error / not-found">
+        <DCArtboard id="system" label="loading.tsx · error.tsx · not-found.tsx" width={1200} height={520}>
+          <SystemPages />
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="notes" title="Handoff notes">
+        <DCPostIt x={40} y={20} width={320}>
+          <strong>All fonts are Google Fonts.</strong> Source Serif 4, Inter, JetBrains Mono, Caveat. Load via <code>next/font/google</code> in app/layout.tsx.
+        </DCPostIt>
+        <DCPostIt x={380} y={20} width={320}>
+          <strong>Tokens block drops into globals.css</strong> as-is. Delete the Arial body-font rule and the dark-mode media query (dark mode deferred).
+        </DCPostIt>
+        <DCPostIt x={720} y={20} width={320}>
+          <strong>Next:</strong> Session B — TrialBanner states, /paywall (3 branches), /settings/billing. Then Session C — handoff doc.
+        </DCPostIt>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

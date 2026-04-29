@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grade Sight — Session 3 · /students/[id]</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..600;1,8..60,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap" />
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: oklch(0.94 0.012 82); font-family: 'Inter', system-ui, sans-serif; }
+  #root { height: 100vh; }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" fill="#f5f3ee"/>
+    <g transform="translate(60,60)">
+      <circle cx="40" cy="40" r="34" fill="none" stroke="#22c55e" stroke-width="3"/>
+      <path d="M 22 44 Q 30 50 36 56 Q 46 44 64 18" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="100" y="170" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#2a2622">Student page</text>
+  </svg>
+</template>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="session3-student.jsx"></script>
+
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(
+    <DesignCanvas
+      title="Grade Sight · Session 03 · /students/[id]"
+      subtitle="The longitudinal page · parent · teacher · mobile"
+    >
+      <DCSection id="context" title="Context">
+        <DCArtboard id="ctx3" label="What's in this session" width={1100} height={620}>
+          <window.ContextCard3 />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="parent" title="Parent view">
+        <DCArtboard id="sp-parent" label="/students/[id] · parent · Marcus" width={1280} height={1340}>
+          <window.StudentPageParent />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="teacher" title="Teacher view">
+        <DCArtboard id="sp-teacher" label="/students/[id] · teacher · David Park" width={1380} height={1380}>
+          <window.StudentPageTeacher />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="mobile" title="Mobile (parent)">
+        <DCArtboard id="sp-mobile" label="375w · parent" width={420} height={870}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '20px 0', height: '100%', background: 'oklch(0.94 0.012 82)' }}>
+            <window.StudentPageMobile />
+          </div>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+</script>
+
+</body>
+</html>

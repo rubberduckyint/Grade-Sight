@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grade Sight — Design Handoff for Claude Code</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap" />
+<style>
+  :root {
+    --paper: oklch(0.985 0.006 82);
+    --paper-soft: oklch(0.965 0.008 82);
+    --paper-deep: oklch(0.94 0.012 82);
+    --rule: oklch(0.88 0.012 82);
+    --rule-soft: oklch(0.92 0.01 82);
+    --ink: oklch(0.22 0.015 75);
+    --ink-soft: oklch(0.42 0.015 75);
+    --ink-mute: oklch(0.58 0.012 75);
+    --accent: oklch(0.42 0.09 252);
+    --accent-soft: oklch(0.92 0.03 252);
+    --insight: oklch(0.72 0.12 72);
+    --insight-soft: oklch(0.95 0.035 82);
+    --mark: oklch(0.56 0.15 28);
+    --serif: "Source Serif 4", Georgia, serif;
+    --sans: "Inter", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 18px; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 1rem; line-height: 1.55; }
+  a { color: var(--accent); }
+  h1, h2, h3, h4 { font-family: var(--serif); font-weight: 400; letter-spacing: -0.02em; margin: 0; }
+  h1 { font-size: 3rem; line-height: 1.05; }
+  h2 { font-size: 2rem; line-height: 1.15; }
+  h3 { font-size: 1.556rem; line-height: 1.25; }
+  h4 { font-size: 1.222rem; font-weight: 500; }
+  code, pre { font-family: var(--mono); font-size: 0.833rem; }
+  .eyebrow { font-family: var(--mono); font-size: 0.722rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-mute); }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 72px 56px; }
+  .section { padding: 64px 0; border-top: 1px solid var(--rule-soft); }
+  .section:first-of-type { border-top: 0; }
+  .lead { font-family: var(--serif); font-size: 1.333rem; color: var(--ink-soft); line-height: 1.5; font-weight: 300; max-width: 640px; }
+  .muted { color: var(--ink-soft); }
+  pre { margin: 0; padding: 22px 24px; background: var(--paper-deep); border: 1px solid var(--rule); border-radius: 3px; overflow: auto; line-height: 1.6; white-space: pre; font-size: 0.778rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.889rem; }
+  th, td { text-align: left; padding: 12px 14px; border-top: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.722rem; letter-spacing: 0.12em; color: var(--ink-mute); text-transform: uppercase; font-weight: 400; }
+  tr:first-child th { border-top: 0; }
+  .swatch { display: inline-block; width: 40px; height: 22px; border-radius: 2px; border: 1px solid var(--rule); vertical-align: middle; margin-right: 10px; }
+  .rule-card { padding: 18px 22px; border-left: 2px solid var(--accent); background: var(--paper-soft); margin-bottom: 14px; border-radius: 0 3px 3px 0; }
+  .rule-card h4 { margin-bottom: 4px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .checklist li { margin-bottom: 10px; }
+  nav.toc { position: sticky; top: 0; background: var(--paper); border-bottom: 1px solid var(--rule-soft); padding: 16px 56px; font-size: 0.833rem; display: flex; gap: 24px; z-index: 10; }
+  nav.toc a { text-decoration: none; color: var(--ink-soft); }
+  nav.toc a:hover { color: var(--ink); }
+  .pill { display: inline-block; padding: 3px 10px; background: var(--accent-soft); color: var(--accent); border-radius: 2px; font-family: var(--mono); font-size: 0.667rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .pill.warn { background: var(--insight-soft); color: oklch(0.48 0.12 72); }
+  .pill.danger { background: oklch(0.96 0.03 28); color: var(--mark); }
+  blockquote { margin: 20px 0; padding: 16px 22px; border-left: 2px solid var(--ink-mute); background: var(--paper-soft); font-family: var(--serif); font-style: italic; font-size: 1.111rem; color: var(--ink-soft); }
+  .do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .do, .dont { padding: 18px 22px; border: 1px solid var(--rule); border-radius: 3px; }
+  .do { border-left: 3px solid var(--accent); }
+  .dont { border-left: 3px solid var(--mark); }
+  .do h5, .dont h5 { margin: 0 0 6px; font-family: var(--mono); font-size: 0.722rem; letter-spacing: 0.12em; text-transform: uppercase; }
+  .do h5 { color: var(--accent); }
+  .dont h5 { color: var(--mark); }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" fill="#f5f3ee"/>
+    <g transform="translate(60,60)">
+      <circle cx="40" cy="40" r="34" fill="none" stroke="#2a2622" stroke-width="3"/>
+      <circle cx="40" cy="40" r="14" fill="#2a2622"/>
+    </g>
+    <text x="100" y="170" text-anchor="middle" font-family="Georgia, serif" font-size="18" fill="#2a2622">Grade Sight</text>
+  </svg>
+</template>
+
+
+<nav class="toc">
+  <a href="#overview">Overview</a>
+  <a href="#tokens">Tokens</a>
+  <a href="#type">Type</a>
+  <a href="#components">Components</a>
+  <a href="#copy">Copy</a>
+  <a href="#a11y">A11y</a>
+  <a href="#clerk">Clerk</a>
+  <a href="#implementation">Implementation</a>
+</nav>
+
+<div class="wrap">
+
+<!-- OVERVIEW -->
+<section class="section" id="overview">
+  <div class="eyebrow" style="margin-bottom: 18px;">Design handoff · v1 · Apr 24 2026</div>
+  <h1>Grade Sight Editorial</h1>
+  <p class="lead" style="margin-top: 20px;">
+    One document. Everything Claude Code needs to implement the auth + billing surfaces without designing-by-inference.
+    Tokens, type, components, copy, and accessibility — all in one place, all on the 18px base scale.
+  </p>
+  <div style="margin-top: 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+    <div><div class="eyebrow">Framework</div><div>Next.js 16 App Router</div></div>
+    <div><div class="eyebrow">Styling</div><div>Tailwind 4 (@theme)</div></div>
+    <div><div class="eyebrow">Primitives</div><div>shadcn/ui + Clerk</div></div>
+    <div><div class="eyebrow">Base</div><div>18px · WCAG AA</div></div>
+  </div>
+  <div style="margin-top: 36px; padding: 20px 24px; background: var(--paper-soft); border: 1px solid var(--rule-soft); border-radius: 3px;">
+    <div class="eyebrow" style="margin-bottom: 8px;">IF NO TOKEN FITS — STOP AND ASK</div>
+    <p style="margin: 0;" class="muted">
+      Every color, spacing, and type decision in this doc is a token. If you're about to hand-pick a hex, a pixel, or a font size that isn't here: don't. Ask instead. That's how the system stays coherent.
+    </p>
+  </div>
+</section>
+
+<!-- PRINCIPLES -->
+<section class="section">
+  <div class="eyebrow">Principles</div>
+  <h2 style="margin-top: 10px;">Five rules that settle 90% of decisions.</h2>
+  <div style="margin-top: 28px;">
+    <div class="rule-card"><h4>1 · 18px is the floor.</h4><p class="muted" style="margin: 0;">Body text is 18px (1rem). Never shrink to fit. Density is a layout decision — shorten copy or widen the container, never reduce the font.</p></div>
+    <div class="rule-card"><h4>2 · Amber is precious.</h4><p class="muted" style="margin: 0;">Only at diagnostic-insight moments. Never as chrome, decoration, or a generic warning color.</p></div>
+    <div class="rule-card"><h4>3 · Red is evidence only.</h4><p class="muted" style="margin: 0;">Only for mock student-work error marks. Never a UI error state — those use ink + mono microcopy.</p></div>
+    <div class="rule-card"><h4>4 · Serif for meaning, sans for doing.</h4><p class="muted" style="margin: 0;">Headlines, voice, and quotes are Source Serif 4. Buttons, forms, tables are Inter.</p></div>
+    <div class="rule-card"><h4>5 · Focus rings never hide.</h4><p class="muted" style="margin: 0;">:focus-visible is enforced globally. Do not remove the outline on any interactive element.</p></div>
+  </div>
+</section>
+
+<!-- TOKENS -->
+<section class="section" id="tokens">
+  <div class="eyebrow">Tokens</div>
+  <h2 style="margin-top: 10px;">The complete <span style="font-style: italic;">globals.css</span>.</h2>
+  <p class="muted" style="margin-top: 14px; max-width: 640px;">Paste this block as-is into <code>apps/web/app/globals.css</code>. It replaces the entire current file. Tailwind 4 reads <code>@theme</code> directly — do NOT create a <code>tailwind.config.ts</code>.</p>
+  <pre style="margin-top: 24px;">@import "tailwindcss";
+
+/* Fonts loaded via next/font/google in app/layout.tsx:
+   Source Serif 4 → --font-serif
+   Inter          → --font-sans
+   JetBrains Mono → --font-mono
+   Caveat         → --font-hand  (diagnostic-mock handwriting ONLY) */
+
+@theme {
+  /* --- Paper &amp; ink — warm, not gray --- */
+  --color-paper:       oklch(0.985 0.006 82);
+  --color-paper-soft:  oklch(0.965 0.008 82);
+  --color-paper-deep:  oklch(0.94  0.012 82);
+  --color-rule:        oklch(0.88  0.012 82);
+  --color-rule-soft:   oklch(0.92  0.010 82);
+
+  --color-ink:         oklch(0.22  0.015 75);
+  --color-ink-soft:    oklch(0.42  0.015 75);
+  --color-ink-mute:    oklch(0.58  0.012 75);
+
+  /* Single chrome accent — pen-ink blue */
+  --color-accent:      oklch(0.42  0.09  252);
+  --color-accent-soft: oklch(0.92  0.03  252);
+
+  /* Diagnostic amber — insight moments only */
+  --color-insight:     oklch(0.72  0.12  72);
+  --color-insight-soft:oklch(0.95  0.035 82);
+
+  /* Red — error marks on student work only. Never UI. */
+  --color-mark:        oklch(0.56  0.15  28);
+
+  /* Semantic aliases */
+  --color-background:    var(--color-paper);
+  --color-surface:       var(--color-paper);
+  --color-surface-muted: var(--color-paper-soft);
+  --color-border:        var(--color-rule);
+  --color-border-soft:   var(--color-rule-soft);
+  --color-foreground:    var(--color-ink);
+  --color-muted:         var(--color-ink-soft);
+  --color-subtle:        var(--color-ink-mute);
+
+  /* --- Type · 18px base --- */
+  --text-xs:   0.722rem; /* 13 · eyebrows, captions, mono labels */
+  --text-sm:   0.833rem; /* 15 · dense rows only */
+  --text-base: 1rem;     /* 18 · default body */
+  --text-lg:   1.111rem; /* 20 · parent lead */
+  --text-xl:   1.222rem; /* 22 · card titles */
+  --text-2xl:  1.556rem; /* 28 · section heads */
+  --text-3xl:  2rem;     /* 36 · page heads */
+  --text-5xl:  3rem;     /* 54 · dashboard greeting */
+  --text-7xl:  4.444rem; /* 80 · landing display ONLY */
+
+  --leading-tight:  1.1;
+  --leading-snug:   1.25;
+  --leading-normal: 1.55;
+  --leading-loose:  1.65;
+
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-sans:  "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:  "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-hand:  "Caveat", cursive;
+
+  /* --- Radii --- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* --- Focus ring --- */
+  --ring-color: var(--color-accent);
+  --ring-offset: 2px;
+}
+
+@layer base {
+  html { font-size: 18px; font-family: var(--font-sans); color: var(--color-ink); background: var(--color-paper); }
+  body { font-family: var(--font-sans); font-size: var(--text-base); line-height: var(--leading-normal); }
+  :focus-visible { outline: 2px solid var(--ring-color); outline-offset: var(--ring-offset); border-radius: var(--radius-sm); }
+  ::selection { background: var(--color-accent-soft); color: var(--color-ink); }
+}</pre>
+
+  <h3 style="margin-top: 48px;">Color reference</h3>
+  <table style="margin-top: 16px;">
+    <tr><th>Swatch</th><th>Token</th><th>Use</th></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.985 0.006 82);"></span></td><td><code>--color-paper</code></td><td>Page background · default surface</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.965 0.008 82);"></span></td><td><code>--color-paper-soft</code></td><td>Sidebars · muted cards</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.94 0.012 82);"></span></td><td><code>--color-paper-deep</code></td><td>Code blocks · table headers</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.88 0.012 82);"></span></td><td><code>--color-rule</code></td><td>Borders · dividers</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.22 0.015 75);"></span></td><td><code>--color-ink</code></td><td>Body text · foreground</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.42 0.015 75);"></span></td><td><code>--color-ink-soft</code></td><td>Secondary text</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.58 0.012 75);"></span></td><td><code>--color-ink-mute</code></td><td>Tertiary · captions</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.42 0.09 252);"></span></td><td><code>--color-accent</code></td><td>Pen-ink blue · the only chrome accent</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.72 0.12 72);"></span></td><td><code>--color-insight</code></td><td>Diagnostic amber · insight moments ONLY</td></tr>
+    <tr><td><span class="swatch" style="background: oklch(0.56 0.15 28);"></span></td><td><code>--color-mark</code></td><td>Red · mock student error marks ONLY</td></tr>
+  </table>
+</section>
+
+<!-- TYPE -->
+<section class="section" id="type">
+  <div class="eyebrow">Type</div>
+  <h2 style="margin-top: 10px;">Four Google Fonts. One scale.</h2>
+  <p class="muted" style="margin-top: 14px; max-width: 640px;">Load every font via <code>next/font/google</code> in <code>app/layout.tsx</code>. No font licensing work required.</p>
+
+  <pre style="margin-top: 22px;">// app/layout.tsx
+import { Source_Serif_4, Inter, JetBrains_Mono, Caveat } from "next/font/google";
+
+const serif = Source_Serif_4({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
+const sans  = Inter({          subsets: ["latin"], variable: "--font-sans",  display: "swap" });
+const mono  = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono",  display: "swap" });
+const hand  = Caveat({         subsets: ["latin"], variable: "--font-hand",  display: "swap", weight: ["500","600"] });
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    &lt;ClerkProvider&gt;
+      &lt;html lang="en" className={`${serif.variable} ${sans.variable} ${mono.variable} ${hand.variable} h-full antialiased`}&gt;
+        &lt;body className="min-h-full flex flex-col"&gt;{children}&lt;/body&gt;
+      &lt;/html&gt;
+    &lt;/ClerkProvider&gt;
+  );
+}</pre>
+
+  <h3 style="margin-top: 48px;">Scale · 18px base</h3>
+  <table style="margin-top: 16px;">
+    <tr><th>Token</th><th>Px</th><th>Rem</th><th>Role</th><th>Font</th></tr>
+    <tr><td><code>--text-xs</code></td><td>13</td><td>0.722</td><td>Eyebrow · caption</td><td>Mono</td></tr>
+    <tr><td><code>--text-sm</code></td><td>15</td><td>0.833</td><td>Dense row only</td><td>Sans</td></tr>
+    <tr><td><code>--text-base</code></td><td><strong>18</strong></td><td><strong>1</strong></td><td><strong>Default body</strong></td><td>Sans</td></tr>
+    <tr><td><code>--text-lg</code></td><td>20</td><td>1.111</td><td>Parent lead / card title</td><td>Sans or Serif</td></tr>
+    <tr><td><code>--text-xl</code></td><td>22</td><td>1.222</td><td>Card title</td><td>Serif</td></tr>
+    <tr><td><code>--text-2xl</code></td><td>28</td><td>1.556</td><td>Section head</td><td>Serif</td></tr>
+    <tr><td><code>--text-3xl</code></td><td>36</td><td>2</td><td>Page head</td><td>Serif</td></tr>
+    <tr><td><code>--text-5xl</code></td><td>54</td><td>3</td><td>Greeting / hero head</td><td>Serif</td></tr>
+    <tr><td><code>--text-7xl</code></td><td>80</td><td>4.444</td><td>Landing display (1×)</td><td>Serif</td></tr>
+  </table>
+
+  <h3 style="margin-top: 48px;">Live samples</h3>
+  <div style="margin-top: 20px; padding: 32px 36px; border: 1px solid var(--rule); border-radius: 3px; background: var(--paper);">
+    <div style="font-family: var(--serif); font-size: 4.444rem; letter-spacing: -0.025em; line-height: 1.02;">Not just what. <span style="font-style: italic; color: var(--accent);">Why.</span></div>
+    <div style="font-family: var(--serif); font-size: 3rem; letter-spacing: -0.02em; margin-top: 32px;">Good evening, David.</div>
+    <div style="font-family: var(--serif); font-size: 2rem; margin-top: 20px;">Billing &amp; plan</div>
+    <div style="font-family: var(--serif); font-size: 1.556rem; font-weight: 500; margin-top: 20px;">Recent invoices</div>
+    <div style="font-size: 1.111rem; color: var(--ink-soft); margin-top: 20px; max-width: 540px; line-height: 1.5;">No assessments yet. When you're ready, upload a photo of your student's quiz or test and we'll tell you what we saw.</div>
+    <div style="font-size: 1rem; margin-top: 14px; max-width: 540px;">Default body copy renders at 18px / 1rem. Line-height 1.55 for comfortable reading.</div>
+    <div style="font-family: var(--mono); font-size: 0.722rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-mute); margin-top: 20px;">MONO EYEBROW · TIMESTAMP · ID</div>
+  </div>
+</section>
+
+<!-- COMPONENTS -->
+<section class="section" id="components">
+  <div class="eyebrow">Components</div>
+  <h2 style="margin-top: 10px;">The component index.</h2>
+  <p class="muted" style="margin-top: 14px; max-width: 640px;">Everything Claude Code needs to build in <code>apps/web/components/</code>. Visual references live on <strong>Grade Sight Foundation.html</strong> and <strong>Grade Sight Billing.html</strong>.</p>
+
+  <table style="margin-top: 28px;">
+    <tr><th>Component</th><th>File</th><th>Uses shadcn</th><th>Reference</th></tr>
+    <tr><td><code>AppShell</code></td><td>components/app-shell.tsx</td><td>—</td><td>Foundation · Dashboard</td></tr>
+    <tr><td><code>AppHeader</code></td><td>components/app-header.tsx</td><td>DropdownMenu, Avatar</td><td>Foundation · Dashboard</td></tr>
+    <tr><td><code>PageContainer</code></td><td>components/page-container.tsx</td><td>—</td><td>max-w-[1000px] pad-y</td></tr>
+    <tr><td><code>SectionEyebrow</code></td><td>components/section-eyebrow.tsx</td><td>—</td><td>mono · xs · tracking-[0.14em]</td></tr>
+    <tr><td><code>SerifHeadline</code></td><td>components/serif-headline.tsx</td><td>—</td><td>serif · weight 400 · tight</td></tr>
+    <tr><td><code>TrustBand</code></td><td>components/trust-band.tsx</td><td>—</td><td>Foundation · Landing foot</td></tr>
+    <tr><td><code>EmptyState</code></td><td>components/empty-state.tsx</td><td>Button</td><td>Foundation · Dashboard</td></tr>
+    <tr><td><code>TrialBanner</code></td><td>components/trial-banner.tsx</td><td>Button</td><td>Billing · 4 stacked states</td></tr>
+    <tr><td><code>Paywall</code> (page)</td><td>app/paywall/page.tsx</td><td>Button</td><td>Billing · 3 branch states</td></tr>
+    <tr><td><code>PaywallInline</code></td><td>components/paywall-inline.tsx</td><td>Card, Button</td><td>Billing · Inline block</td></tr>
+    <tr><td><code>BillingPage</code></td><td>app/settings/billing/page.tsx</td><td>Card, Button, Separator, Badge</td><td>Billing · Settings</td></tr>
+    <tr><td><code>LoadingState</code></td><td>app/loading.tsx</td><td>Skeleton</td><td>Foundation · System</td></tr>
+    <tr><td><code>ErrorState</code></td><td>app/error.tsx</td><td>Button</td><td>Foundation · System</td></tr>
+    <tr><td><code>NotFound</code></td><td>app/not-found.tsx</td><td>Button</td><td>Foundation · System</td></tr>
+    <tr><td><code>Toast</code></td><td>app/layout.tsx &lt;Toaster /&gt;</td><td>Sonner</td><td>Per shadcn default, themed to ink/paper</td></tr>
+  </table>
+
+  <h3 style="margin-top: 48px;">Button conventions</h3>
+  <div class="do-dont">
+    <div class="do">
+      <h5>DO</h5>
+      <p style="margin: 0;">Primary = <code>bg-ink text-paper</code> · Secondary = <code>border-rule</code>, paper bg · Tertiary = text link, accent color. Radius is <code>--radius-sm</code> (3px) everywhere.</p>
+    </div>
+    <div class="dont">
+      <h5>DON'T</h5>
+      <p style="margin: 0;">No gradients. No shadows on buttons. No pill buttons. No icon-only primary CTAs — every CTA has a verb.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 40px;">TrialBanner prop contract</h3>
+  <pre style="margin-top: 14px;">type TrialBannerProps = {
+  daysRemaining: number;    // &lt;= 0 hides banner (paywall takes over)
+  role: "parent" | "teacher";
+  dismissable?: boolean;    // false once &lt;= 1 day
+  onAddCard: () =&gt; void;
+  onDismiss?: () =&gt; void;
+};
+
+// Tone picks itself:
+//   &gt; 7 days         → render nothing
+//   4–7 days         → tone="calm"    (paper-soft bg)
+//   2–3 days         → tone="insight" (insight-soft bg, amber rule)
+//   &lt;= 1 day         → tone="urgent"  (paper-deep bg, mark-colored eyebrow)</pre>
+</section>
+
+<!-- COPY -->
+<section class="section" id="copy">
+  <div class="eyebrow">Copy patterns</div>
+  <h2 style="margin-top: 10px;">The voice, in examples.</h2>
+  <div class="two-col" style="margin-top: 28px;">
+    <div>
+      <h4 style="margin-bottom: 10px;">Grade Sight voice</h4>
+      <ul class="muted">
+        <li>Specific &gt; generic. "Your trial ends in 5 days" beats "Your trial is ending soon."</li>
+        <li>Honest about consequences. "You'll lose access tomorrow" not "Features may be limited."</li>
+        <li>Warm but not cute. No emoji. No "Oopsie."</li>
+        <li>Second person. Not "users." You.</li>
+        <li>Never clinical about students. A student's work is evidence, not a diagnosis of them.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="margin-bottom: 10px;">Parent vs teacher</h4>
+      <ul class="muted">
+        <li><strong>Parent:</strong> text-lg (20px) lead, more white space, "your kid" / "your student."</li>
+        <li><strong>Teacher:</strong> text-base (18px), denser data, "your students" / "your class."</li>
+        <li>Same components. Different copy and density. Never build parallel components.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 40px;">Canonical examples</h3>
+  <blockquote>Your trial ends in 3 days. Keep your diagnoses and interventions going for $15/month.</blockquote>
+  <blockquote>Your trial ended yesterday. Add a card and pick up exactly where you left off.</blockquote>
+  <blockquote>You canceled. We kept everything. Resubscribe whenever it's useful — same price, same data.</blockquote>
+  <blockquote>Your last payment bounced. Update your card and we'll try again.</blockquote>
+  <blockquote>No assessments yet. When you're ready, upload a photo of your student's quiz and we'll tell you what we saw.</blockquote>
+</section>
+
+<!-- ACCESSIBILITY -->
+<section class="section" id="a11y">
+  <div class="eyebrow">Accessibility</div>
+  <h2 style="margin-top: 10px;">WCAG AA, non-negotiable.</h2>
+  <p class="muted" style="margin-top: 14px; max-width: 640px;">This is a hard requirement, not a nice-to-have. Edtech procurement will check.</p>
+  <ul class="checklist muted" style="margin-top: 22px;">
+    <li><strong>Base 18px.</strong> Gives every text token headroom for AA. Don't shrink below 15px ever.</li>
+    <li><strong>Focus ring mandatory.</strong> <code>:focus-visible</code> in globals.css applies site-wide. Do not override <code>outline: none</code> on any interactive element.</li>
+    <li><strong>Contrast check.</strong> <code>ink</code> on <code>paper</code> ≈ 13:1. <code>ink-soft</code> on <code>paper</code> ≈ 7:1. <code>accent</code> on <code>paper</code> ≈ 7:1. All pass AA large + normal text.</li>
+    <li><strong>No color-only meaning.</strong> Every amber insight also has a mono eyebrow label. Every error state has text, not just red.</li>
+    <li><strong>Keyboard paths.</strong> Every CTA reachable by Tab in visual order. Banners are dismissable by Esc when focus is inside.</li>
+    <li><strong>Form labels.</strong> Every input has a visible label. Placeholders are not labels.</li>
+    <li><strong>prefers-reduced-motion.</strong> Respect it. Skeletons have no shimmer. Transitions cap at 200ms.</li>
+    <li><strong>Semantic HTML.</strong> <code>&lt;button&gt;</code> for actions, <code>&lt;a&gt;</code> for navigation. Never <code>&lt;div onClick&gt;</code>.</li>
+  </ul>
+</section>
+
+<!-- CLERK -->
+<section class="section" id="clerk">
+  <div class="eyebrow">Clerk appearance</div>
+  <h2 style="margin-top: 10px;">Auth forms, on-brand.</h2>
+  <p class="muted" style="margin-top: 14px; max-width: 640px;">Apply the same <code>appearance</code> prop to every <code>&lt;SignIn&gt;</code> and <code>&lt;SignUp&gt;</code>. Extract into <code>lib/clerk-appearance.ts</code>.</p>
+  <pre style="margin-top: 22px;">// apps/web/lib/clerk-appearance.ts
+import type { Appearance } from "@clerk/types";
+
+export const gradeSightClerk: Appearance = {
+  variables: {
+    colorPrimary:       "oklch(0.22 0.015 75)",   // ink
+    colorText:          "oklch(0.22 0.015 75)",
+    colorTextSecondary: "oklch(0.42 0.015 75)",   // ink-soft
+    colorBackground:    "oklch(0.985 0.006 82)",  // paper
+    colorInputBackground:"oklch(0.985 0.006 82)",
+    colorInputText:     "oklch(0.22 0.015 75)",
+    colorDanger:        "oklch(0.56 0.15 28)",    // mark — only for validation
+    colorSuccess:       "oklch(0.42 0.09 252)",   // accent
+    fontFamily:         "Inter, system-ui, sans-serif",
+    fontFamilyButtons:  "Inter, system-ui, sans-serif",
+    fontSize:           "1rem",
+    borderRadius:       "3px",
+  },
+  elements: {
+    card: "shadow-none border border-[oklch(0.88_0.012_82)] bg-[oklch(0.985_0.006_82)]",
+    headerTitle: "font-[var(--font-serif)] text-[1.556rem] font-medium tracking-tight",
+    headerSubtitle: "text-[oklch(0.42_0.015_75)]",
+    formButtonPrimary:
+      "bg-[oklch(0.22_0.015_75)] hover:bg-black text-[oklch(0.985_0.006_82)] rounded-[3px] font-medium text-base normal-case",
+    formFieldInput:
+      "border border-[oklch(0.88_0.012_82)] rounded-[3px] text-base focus-visible:outline-2 focus-visible:outline-[oklch(0.42_0.09_252)]",
+    footerActionLink: "text-[oklch(0.42_0.09_252)] hover:underline",
+    socialButtonsBlockButton:
+      "border border-[oklch(0.88_0.012_82)] rounded-[3px] text-base hover:bg-[oklch(0.965_0.008_82)]",
+    dividerLine: "bg-[oklch(0.92_0.010_82)]",
+    dividerText: "text-[oklch(0.58_0.012_75)] uppercase tracking-[0.12em] text-xs font-[var(--font-mono)]",
+  },
+};</pre>
+</section>
+
+<!-- IMPLEMENTATION ORDER -->
+<section class="section" id="implementation">
+  <div class="eyebrow">Implementation</div>
+  <h2 style="margin-top: 10px;">The sequence.</h2>
+  <p class="muted" style="margin-top: 14px; max-width: 640px;">One PR per step. Do not begin step N+1 until step N renders correctly end-to-end.</p>
+
+  <ol style="margin-top: 28px; padding-left: 0; list-style: none; counter-reset: step;">
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 01 · FONTS + TOKENS</div>
+      <h4>Replace Geist. Rewrite globals.css.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Load Source Serif 4, Inter, JetBrains Mono, Caveat via <code>next/font/google</code>. Replace <code>globals.css</code> with the block in §Tokens. Delete the <code>font-family: Arial</code> rule and the dark-mode media query. Verify body renders Inter, serif utility renders Source Serif 4.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 02 · SHADCN/UI</div>
+      <h4>Install. Wire to our tokens.</h4>
+      <p class="muted" style="margin: 6px 0 0;"><code>pnpm dlx shadcn@latest init</code> — baseColor neutral, cssVars yes. Then add: <code>button card alert skeleton badge dialog dropdown-menu separator sonner avatar</code>. Edit the generated <code>components/ui/button.tsx</code> so primary variant maps to <code>bg-ink text-paper</code>. Every primitive must render in our paper/ink palette before step 03.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 03 · COMPONENTS SCAFFOLD</div>
+      <h4>Create components/ with the index above.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Build <code>AppShell, AppHeader, PageContainer, SectionEyebrow, SerifHeadline, TrustBand, EmptyState</code>. No variants I haven't specified. Match the Foundation canvas.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 04 · LANDING</div>
+      <h4>Rebuild /. Trust band required.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Match Foundation landing. No stock imagery. Update <code>&lt;title&gt;</code> + <code>&lt;description&gt;</code> from Next boilerplate.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 05 · DASHBOARD</div>
+      <h4>Rebuild /dashboard using AppShell.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Empty-state card per reference. Replace <code>&lt;p&gt;Loading…&lt;/p&gt;</code> with a proper Skeleton layout.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 06 · AUTH WRAPPERS</div>
+      <h4>Wrap /sign-in, /sign-up/parent, /sign-up/teacher.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Apply <code>gradeSightClerk</code> to every Clerk mount. Editorial panel chrome per Foundation canvas.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 07 · SYSTEM PAGES</div>
+      <h4>Add loading.tsx, error.tsx, not-found.tsx.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Per Foundation · System. Skeleton blocks in <code>paper-deep</code>, no spinners.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 08 · BILLING</div>
+      <h4>TrialBanner → /paywall → /settings/billing → PaywallInline.</h4>
+      <p class="muted" style="margin: 6px 0 0;">All four billing surfaces per Billing canvas. <code>/paywall</code> branches server-side — no client flicker between branches.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft); border-bottom: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 09 · TOASTS</div>
+      <h4>Wire &lt;Sonner /&gt; in root layout.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Themed to paper/ink. Max 3 lines. Never red — use mono eyebrow + neutral body for errors.</p>
+    </li>
+  </ol>
+</section>
+
+<!-- DONE CHECKLIST -->
+<section class="section">
+  <div class="eyebrow">Before merging any PR</div>
+  <h2 style="margin-top: 10px;">Seven-item checklist.</h2>
+  <ul class="checklist muted" style="margin-top: 22px;">
+    <li>Every font size is a token (<code>--text-*</code>). No raw pixels for type.</li>
+    <li>Every color is a token. If you picked a hex, it's wrong.</li>
+    <li>Visible focus ring on every interactive element (Tab through the page).</li>
+    <li>Amber appears only at a diagnostic-insight moment. Red only on mock student marks.</li>
+    <li>Body text is 18px. Nothing you authored is below 15px.</li>
+    <li>Serif = meaning (headlines, voice). Sans = doing (buttons, forms).</li>
+    <li>Matches the reference canvas. If it doesn't, stop and flag.</li>
+  </ul>
+</section>
+
+<section class="section">
+  <div class="eyebrow">Files referenced</div>
+  <h2 style="margin-top: 10px;">Companion canvases.</h2>
+  <ul class="muted" style="margin-top: 20px;">
+    <li><strong>Grade Sight Foundation.html</strong> — Tokens card, landing, dashboard, auth wrappers, system pages.</li>
+    <li><strong>Grade Sight Billing.html</strong> — TrialBanner (4 states), /paywall (3 branches), /settings/billing, inline Paywall block.</li>
+    <li><strong>Grade Sight Diagnostic Reveal.html</strong> — Parent + teacher views of the hero diagnostic moment (aspirational — not in MVP scope).</li>
+  </ul>
+  <div style="margin-top: 36px; padding: 20px 24px; background: var(--paper-soft); border-left: 2px solid var(--accent); border-radius: 0 3px 3px 0;">
+    <div class="eyebrow" style="margin-bottom: 6px; color: var(--accent);">HANDOFF COMPLETE</div>
+    <p style="margin: 0;" class="muted">Open all three HTML files side-by-side while implementing. If something in the reference contradicts this doc, the reference wins and the doc is wrong — flag it.</p>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grade Sight — Session 4 · Diagnosis v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..600;1,8..60,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap" />
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: oklch(0.94 0.012 82); font-family: 'Inter', system-ui, sans-serif; }
+  #root { height: 100vh; }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" fill="#f5f3ee"/>
+    <g transform="translate(60,60)">
+      <circle cx="40" cy="40" r="34" fill="none" stroke="#22c55e" stroke-width="3"/>
+      <path d="M 22 44 Q 30 50 36 56 Q 46 44 64 18" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="100" y="170" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#2a2622">Diagnosis v2</text>
+  </svg>
+</template>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="session4-diagnosis.jsx"></script>
+
+<script type="text/babel">
+  const { DesignCanvas, DCSection, DCArtboard } = window;
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(
+    <DesignCanvas
+      title="Grade Sight · Session 04 · Diagnosis narrative"
+      subtitle="Aggregate → per-pattern → per-problem · 3 modes · inline correction · with-key viewer"
+    >
+      <DCSection id="context" title="Context">
+        <DCArtboard id="ctx4" label="What's in this session" width={1100} height={700}>
+          <window.ContextCard4 />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="parent" title="Parent · already-graded mode">
+        <DCArtboard id="dx-parent" label="/assessments/[id] · parent · narrated" width={1280} height={1620}>
+          <window.DiagnosisParent />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="teacher" title="Teacher · with-key + inline correction OPEN">
+        <DCArtboard id="dx-teacher" label="/assessments/[id] · teacher · editing" width={1380} height={1700}>
+          <window.DiagnosisTeacher />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="withkey" title="With-key side-by-side viewer">
+        <DCArtboard id="dx-viewer" label="Side-by-side · problem #3" width={1480} height={1120}>
+          <window.WithKeyViewer />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="processing" title="Processing state">
+        <DCArtboard id="dx-loading" label="Calmer than a spinner" width={1280} height={780}>
+          <window.ProcessingState />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+</script>
+
+</body>
+</html>

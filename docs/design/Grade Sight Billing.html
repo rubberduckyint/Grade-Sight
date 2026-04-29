@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grade Sight — Session B billing</title>
+<style>html, body { margin: 0; padding: 0; background: #f0eee9; }</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" fill="#f5f3ee"/>
+    <g transform="translate(60,60)">
+      <circle cx="40" cy="40" r="34" fill="none" stroke="#2a2622" stroke-width="3"/>
+      <circle cx="40" cy="40" r="14" fill="#2a2622"/>
+    </g>
+    <text x="100" y="170" text-anchor="middle" font-family="Georgia, serif" font-size="18" fill="#2a2622">Grade Sight</text>
+  </svg>
+</template>
+
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="shared-styles.jsx"></script>
+<script type="text/babel" src="session-b-billing.jsx"></script>
+<script type="text/babel" data-presets="react">
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="banner" title="TrialBanner · urgency states" subtitle="One component. Copy and tone shift with days-remaining and role. Never red, never modal.">
+        <DCArtboard id="banner" label="All four states stacked" width={1100} height={520}>
+          <TrialBannerStates />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="paywall" title="/paywall · the three branch states" subtitle="Spec 4 requires three: trial-ended, canceled, past-due. Each has distinct copy + reassurance.">
+        <DCArtboard id="pw-trial" label="trial-ended — most common case" width={1100} height={760}>
+          <PaywallPage variant="trial-ended" />
+        </DCArtboard>
+        <DCArtboard id="pw-cancel" label="canceled — reconquest moment" width={1100} height={760}>
+          <PaywallPage variant="canceled" />
+        </DCArtboard>
+        <DCArtboard id="pw-past" label="past-due — dunning, defensive" width={1100} height={760}>
+          <PaywallPage variant="past-due" />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="settings" title="/settings/billing" subtitle="Plan, card, invoices, Stripe Customer Portal handoff. No surprises.">
+        <DCArtboard id="settings" label="Active subscription · parent plan" width={1100} height={720}>
+          <BillingSettings />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="inline" title="Inline Paywall block" subtitle="For when a trial user hits a gated feature mid-flow — not a modal.">
+        <DCArtboard id="inline" label="Embedded in a gated surface" width={820} height={560}>
+          <PaywallInlineBlock />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="notes" title="Handoff notes">
+        <DCPostIt x={40} y={20} width={320}>
+          <strong>TrialBanner is one component.</strong> Props: <code>daysRemaining</code>, <code>role</code>, <code>dismissable</code>. Copy/tone pick themselves — do not duplicate.
+        </DCPostIt>
+        <DCPostIt x={380} y={20} width={320}>
+          <strong>/paywall branches on server-fetched subscription state.</strong> Render the correct variant server-side — no client flicker between branches.
+        </DCPostIt>
+        <DCPostIt x={720} y={20} width={320}>
+          <strong>Manage billing</strong> links to Stripe Customer Portal session. Never build card/invoice editing in-app. Stripe owns it.
+        </DCPostIt>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grade Sight — Master Index</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..600;1,8..60,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+  :root {
+    --paper: oklch(0.985 0.006 82);
+    --paper-soft: oklch(0.965 0.008 82);
+    --paper-deep: oklch(0.94 0.012 82);
+    --rule: oklch(0.88 0.012 82);
+    --rule-soft: oklch(0.92 0.01 82);
+    --ink: oklch(0.22 0.015 75);
+    --ink-soft: oklch(0.42 0.015 75);
+    --ink-mute: oklch(0.58 0.012 75);
+    --accent: oklch(0.42 0.09 252);
+    --insight: oklch(0.72 0.12 72);
+    --green: oklch(0.62 0.18 145);
+    --serif: "Source Serif 4", Georgia, serif;
+    --sans: "Inter", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 18px; }
+  body { margin: 0; background: var(--paper-deep); color: var(--ink); font-family: var(--sans); line-height: 1.55; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 64px 56px 96px; }
+  .eyebrow { font-family: var(--mono); font-size: 0.722rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-mute); }
+  h1 { font-family: var(--serif); font-size: 3.6rem; font-weight: 400; letter-spacing: -0.022em; line-height: 1.05; margin: 0; }
+  h2 { font-family: var(--serif); font-size: 1.667rem; font-weight: 500; margin: 0; letter-spacing: -0.012em; }
+  .lead { font-family: var(--serif); font-size: 1.333rem; font-weight: 300; color: var(--ink-soft); line-height: 1.5; max-width: 720px; margin-top: 18px; }
+
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo span { font-family: var(--serif); font-size: 1.222rem; font-weight: 500; }
+
+  .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 36px; border-bottom: 1px solid var(--rule-soft); }
+  .meta { font-size: 0.889rem; color: var(--ink-soft); text-align: right; }
+  .meta span { display: block; }
+
+  .session { margin-top: 56px; }
+  .session-head { display: grid; grid-template-columns: 80px 1fr; gap: 32px; align-items: baseline; padding-bottom: 18px; border-bottom: 1px solid var(--rule-soft); }
+  .session-num { font-family: var(--serif); font-style: italic; font-size: 3rem; color: var(--ink-mute); font-weight: 300; }
+  .session-title h2 { font-size: 2rem; font-weight: 400; letter-spacing: -0.014em; }
+  .session-title p { font-family: var(--serif); font-size: 1.111rem; color: var(--ink-soft); margin: 8px 0 0; max-width: 640px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+  .card { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; min-height: 180px; transition: border-color 120ms; cursor: pointer; text-decoration: none; color: inherit; }
+  .card:hover { border-color: var(--accent); }
+  .card .role { font-family: var(--mono); font-size: 0.667rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .card h3 { font-family: var(--serif); font-size: 1.222rem; font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+  .card .desc { font-size: 0.944rem; color: var(--ink-soft); line-height: 1.5; flex: 1; }
+  .card .open { font-family: var(--mono); font-size: 0.722rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-top: auto; padding-top: 10px; }
+
+  .principle { padding: 24px 28px; background: var(--paper); border: 1px solid var(--rule-soft); border-left: 3px solid var(--accent); border-radius: 0 4px 4px 0; margin-top: 14px; }
+  .principle h4 { font-family: var(--serif); font-size: 1.111rem; font-weight: 500; margin: 0 0 4px; }
+  .principle p { font-size: 0.944rem; color: var(--ink-soft); margin: 0; line-height: 1.55; }
+
+  .legend { display: flex; gap: 24px; margin-top: 24px; flex-wrap: wrap; font-size: 0.833rem; color: var(--ink-soft); }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 8px; }
+
+  footer { margin-top: 80px; padding-top: 32px; border-top: 1px solid var(--rule-soft); display: flex; justify-content: space-between; font-size: 0.833rem; color: var(--ink-mute); font-family: var(--mono); letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" fill="#f5f3ee"/>
+    <g transform="translate(60,60)">
+      <circle cx="40" cy="40" r="34" fill="none" stroke="#22c55e" stroke-width="3"/>
+      <path d="M 22 44 Q 30 50 36 56 Q 46 44 64 18" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="100" y="172" text-anchor="middle" font-family="Georgia, serif" font-size="15" fill="#2a2622">Index</text>
+  </svg>
+</template>
+
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <div class="logo">
+        <svg width="26" height="26" viewBox="0 0 32 32"><defs><mask id="lm"><rect width="32" height="32" fill="white"/><path d="M 7 17 Q 11 20 14 23 Q 18 17 26 5" stroke="black" stroke-width="6.5" stroke-linecap="round" fill="none"/></mask></defs><g mask="url(#lm)"><circle cx="16" cy="16" r="12" fill="none" stroke="oklch(0.62 0.18 145)" stroke-width="2.6"/></g><path d="M 7 17 Q 11 20 14 23 Q 18 17 26 5" fill="none" stroke="oklch(0.62 0.18 145)" stroke-width="3.2" stroke-linecap="round"/></svg>
+        <span>Grade Sight</span>
+      </div>
+      <div class="eyebrow" style="margin-top: 28px;">Master index · v1 final · 6 sessions</div>
+      <h1 style="margin-top: 14px;">Every screen, in one place.</h1>
+      <p class="lead">Six sessions of design. Twenty-plus surfaces. Two roles, three diagnosis modes, one voice. Click any tile to open the canvas it lives on.</p>
+    </div>
+    <div class="meta">
+      <span><strong style="color: var(--ink); font-family: var(--serif); font-size: 1.111rem;">v1 final</strong></span>
+      <span style="margin-top: 4px;">April 2026</span>
+      <span style="margin-top: 4px;">11 canvas files</span>
+    </div>
+  </div>
+
+  <!-- SESSION 1 — FOUNDATION -->
+  <div class="session">
+    <div class="session-head">
+      <div class="session-num">01</div>
+      <div class="session-title">
+        <h2>Foundation &amp; brand</h2>
+        <p>Tokens, type, brand voice, landing, dashboard, auth, system states. The shared vocabulary every other session inherits.</p>
+      </div>
+    </div>
+    <div class="grid">
+      <a class="card" href="Grade Sight Logo.html" target="_blank">
+        <span class="role">BRAND</span>
+        <h3>Logomark explorations</h3>
+        <p class="desc">The checkmark-through-circle device. Locked to the green/ink palette.</p>
+        <span class="open">Open ›</span>
+      </a>
+      <a class="card" href="Grade Sight Foundation.html" target="_blank">
+        <span class="role">SYSTEM</span>
+        <h3>Foundation v1</h3>
+        <p class="desc">Tokens card, landing, dashboard empty state, auth panel chrome, loading/error/404.</p>
+        <span class="open">Open ›</span>
+      </a>
+      <a class="card" href="Grade Sight Foundation v2.html" target="_blank">
+        <span class="role">SYSTEM</span>
+        <h3>Foundation v2</h3>
+        <p class="desc">Sweep onto the 18px base scale. The version Claude Code should target.</p>
+        <span class="open">Open ›</span>
+      </a>
+      <a class="card" href="Grade Sight Home.html" target="_blank">
+        <span class="role">PUBLIC</span>
+        <h3>Home page · 3 directions</h3>
+        <p class="desc">The Editorial · The Instrument · The Letter. The Editorial was locked.</p>
+        <span class="open">Open ›</span>
+      </a>
+      <a class="card" href="Grade Sight Brief.html" target="_blank">
+        <span class="role">RESEARCH</span>
+        <h3>Demographic brief</h3>
+        <p class="desc">Parent + teacher synthesis. Five design principles that govern every later screen.</p>
+        <span class="open">Open ›</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- SESSION 2 — BILLING -->
+  <div class="session">
+    <div class="session-head">
+      <div class="session-num">02</div>
+      <div class="session-title">
+        <h2>Billing &amp; trial</h2>
+        <p>The honest-money surfaces. Trial banner with four tone states, three-branch paywall, settings/billing, inline Paywall block.</p>
+      </div>
+    </div>
+    <div class="grid">
+      <a class="card" href="Grade Sight Billing.html" target="_blank">
+        <span class="role">PARENT + TEACHER</span>
+        <h3>Billing surfaces</h3>
+        <p class="desc">TrialBanner (4 stacked states) · /paywall (3 branches: trial-end, canceled, payment-failed) · /settings/billing · PaywallInline.</p>
+        <span class="open">Open ›</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- SESSION 3 — STUDENT DETAIL & DIAGNOSIS -->
+  <div class="session">
+    <div class="session-head">
+      <div class="session-num">03</div>
+      <div class="session-title">
+        <h2>Student detail &amp; diagnostic reveal</h2>
+        <p>The hero moment. Per-student narrative page, longitudinal tracking, the diagnostic reveal in both parent and teacher voice.</p>
+      </div>
+    </div>
+    <div class="grid">
+      <a class="card" href="Grade Sight Student Page.html" target="_blank">
+        <span class="role">PARENT + TEACHER</span>
+        <h3>Per-student page</h3>
+        <p class="desc">/students/[id]. The biography view: longitudinal patterns, recent assessments, recurring themes, intervention shortcuts.</p>
+        <span class="open">Open ›</span>
+      </a>
+      <a class="card" href="Grade Sight Diagnostic Reveal.html" target="_blank">
+        <span class="role">PARENT + TEACHER</span>
+        <h3>Diagnostic reveal</h3>
+        <p class="desc">The hero moment. Both role views of the first time a parent or teacher sees what we found.</p>
+        <span class="open">Open ›</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- SESSION 4 — DIAGNOSIS V2 -->
+  <div class="session">
+    <div class="session-head">
+      <div class="session-num">04</div>
+      <div class="session-title">
+        <h2>Diagnosis narrative redesign</h2>
+        <p>Aggregate → per-pattern → per-problem. Three modes (auto-graded · with-key · already-graded). Inline correction, side-by-side viewer, calmer processing.</p>
+      </div>
+    </div>
+    <div class="grid">
+      <a class="card" href="Grade Sight Diagnosis v2.html" target="_blank">
+        <span class="role">CORE</span>
+        <h3>Diagnosis v2</h3>
+        <p class="desc">Three-layer narrative · parent already-graded · teacher with-key + inline correction · side-by-side viewer · processing state.</p>
+        <span class="open">Open ›</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- SESSION 5 — SUPPORTING -->
+  <div class="session">
+    <div class="session-head">
+      <div class="session-num">05</div>
+      <div class="session-title">
+        <h2>Supporting surfaces</h2>
+        <p>The screens people live in. Archive, key library, print-ready intervention, privacy controls, and the 375w mobile upload flow.</p>
+      </div>
+    </div>
+    <div class="grid">
+      <a class="card" href="Grade Sight Supporting Surfaces.html" target="_blank">
+        <span class="role">OPERATIONAL</span>
+        <h3>Five surfaces</h3>
+        <p class="desc">/assessments archive · /keys library · /print/intervention · /settings/privacy · /m/upload (3-screen mobile flow).</p>
+        <span class="open">Open ›</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- SESSION 6 — HANDOFF -->
+  <div class="session">
+    <div class="session-head">
+      <div class="session-num">06</div>
+      <div class="session-title">
+        <h2>Engineering handoff</h2>
+        <p>What Claude Code needs to ship v1. Tokens as <code style="font-family: var(--mono); font-size: 0.833em; padding: 1px 6px; background: var(--paper-deep); border-radius: 2px;">globals.css</code>, component index, copy deck, accessibility checklist, implementation order.</p>
+      </div>
+    </div>
+    <div class="grid">
+      <a class="card" href="Grade Sight Handoff.html" target="_blank">
+        <span class="role">FOR ENGINEERING</span>
+        <h3>Claude Code handoff doc</h3>
+        <p class="desc">One document. Tokens, type scale, components, copy patterns, WCAG AA, Clerk theming, 9-step implementation order.</p>
+        <span class="open">Open ›</span>
+      </a>
+      <a class="card" href="Grade Sight Master Index.html" target="_blank">
+        <span class="role">META</span>
+        <h3>Master index (this page)</h3>
+        <p class="desc">The map. Every canvas, organized by session, ready to share with stakeholders.</p>
+        <span class="open">You're here ›</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- THE FIVE PRINCIPLES — closing reminder -->
+  <div class="session">
+    <div class="session-head">
+      <div class="session-num" style="font-style: normal; font-size: 1.111rem; font-family: var(--mono); letter-spacing: 0.14em; color: var(--ink-mute); text-transform: uppercase; padding-top: 14px;">RULES</div>
+      <div class="session-title">
+        <h2>Five rules that settle 90% of decisions.</h2>
+        <p>Print this. Tape it next to your monitor. If a screen breaks one of these, it's wrong.</p>
+      </div>
+    </div>
+    <div style="margin-top: 18px;">
+      <div class="principle"><h4>1 · 18px is the floor.</h4><p>Body is 18px. Density is a layout decision — never a font-size decision.</p></div>
+      <div class="principle"><h4>2 · Amber is precious.</h4><p>Insight color only. Never chrome. Never a generic warning.</p></div>
+      <div class="principle"><h4>3 · Red is evidence only.</h4><p>Mock student error marks. Never UI errors. Errors use ink + mono microcopy.</p></div>
+      <div class="principle"><h4>4 · Serif for meaning, sans for doing.</h4><p>Headlines and voice are Source Serif 4. Buttons and forms are Inter. Caveat is the student's hand only.</p></div>
+      <div class="principle"><h4>5 · Focus rings never hide.</h4><p>:focus-visible is global. Don't override outlines on any interactive element.</p></div>
+    </div>
+
+    <div class="legend">
+      <span><span class="swatch" style="background: var(--ink);"></span>Ink</span>
+      <span><span class="swatch" style="background: var(--ink-soft);"></span>Ink soft</span>
+      <span><span class="swatch" style="background: var(--accent);"></span>Pen-ink blue · accent</span>
+      <span><span class="swatch" style="background: var(--insight);"></span>Diagnostic amber</span>
+      <span><span class="swatch" style="background: var(--green);"></span>Logo green</span>
+      <span><span class="swatch" style="background: var(--paper); border: 1px solid var(--rule);"></span>Paper</span>
+    </div>
+  </div>
+
+  <footer>
+    <span>GRADE SIGHT · DESIGN · APRIL 2026</span>
+    <span>11 CANVAS FILES · 1 HANDOFF DOC · 1 INDEX</span>
+  </footer>
+
+</div>
+</body>
+</html>
