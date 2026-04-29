@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PageContainer } from "@/components/page-container";
 import { SectionEyebrow } from "@/components/section-eyebrow";
 import { SerifHeadline } from "@/components/serif-headline";
-import { SUPPORT_EMAIL } from "@/lib/support";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 
 function shortCodeFromDigest(digest: string | undefined): string {
   if (!digest) return "ERR-UNKNOWN";
