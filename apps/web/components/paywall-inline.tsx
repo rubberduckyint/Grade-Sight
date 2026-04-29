@@ -8,10 +8,17 @@ export interface PaywallInlineProps {
   feature: string;
   body?: string;
   onAddCard: () => Promise<void>;
+  onDismiss?: () => void;
   children?: ReactNode;
 }
 
-export function PaywallInline({ feature, body, onAddCard, children }: PaywallInlineProps) {
+export function PaywallInline({
+  feature,
+  body,
+  onAddCard,
+  onDismiss,
+  children,
+}: PaywallInlineProps) {
   return (
     <div className="space-y-6">
       {children && (
@@ -31,9 +38,20 @@ export function PaywallInline({ feature, body, onAddCard, children }: PaywallInl
             {body ??
               "Add a card to keep using diagnostic features. We won't charge you until your trial ends."}
           </p>
-          <form action={onAddCard}>
-            <Button type="submit">Add a card</Button>
-          </form>
+          <div className="flex flex-wrap items-center gap-4">
+            <form action={onAddCard}>
+              <Button type="submit">Add card</Button>
+            </form>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="text-base text-ink-soft hover:text-ink"
+              >
+                Not now
+              </button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

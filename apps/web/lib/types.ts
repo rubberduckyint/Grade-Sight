@@ -118,3 +118,19 @@ export interface AssessmentDetailAnswerKey {
   name: string;
   page_count: number;
 }
+
+// ---- Billing prices ----
+
+export interface PriceInfo {
+  plan: string;
+  unit_amount: number;
+  currency: string;
+  interval: string;
+}
+
+export interface PricesResponse {
+  prices: {
+    parent_monthly: PriceInfo;
+    teacher_monthly: PriceInfo;
+  };
+}

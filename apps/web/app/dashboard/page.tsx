@@ -7,8 +7,10 @@ import {
   fetchAssessments,
   fetchEntitlement,
   fetchMe,
+  fetchPrices,
   fetchStudents,
 } from "@/lib/api";
+import type { PriceInfo } from "@/lib/api";
 import type { AppHeaderTab } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
 import { PageContainer } from "@/components/page-container";
@@ -58,17 +60,30 @@ function formatDayLong(now: Date): string {
   }).format(now);
 }
 
+function formatPriceLabel(price: PriceInfo): string {
+  const amount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: price.currency.toUpperCase(),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price.unit_amount / 100);
+  return `${amount}/${price.interval}`;
+}
+
 export default async function DashboardPage() {
-  const [user, entitlement, assessments, students, keys] = await Promise.all([
+  const [user, entitlement, assessments, students, keys, prices] = await Promise.all([
     fetchMe(),
     fetchEntitlement(),
     fetchAssessments({ limit: 10 }),
     fetchStudents(),
     fetchAnswerKeys(),
+    fetchPrices(),
   ]);
   if (!user) redirect("/sign-in");
 
   const role = user.role === "teacher" ? "teacher" : "parent";
+  const planKey = role === "teacher" ? "teacher_monthly" : "parent_monthly";
+  const priceLabel = formatPriceLabel(prices.prices[planKey]);
   const tabs = role === "teacher" ? TEACHER_TABS : PARENT_TABS;
   const uploadLabel = role === "parent" ? "Upload" : "Upload assessment";
   const firstName =
@@ -105,6 +120,7 @@ export default async function DashboardPage() {
             <TrialBanner
               daysRemaining={daysRemaining}
               role={role}
+              priceLabel={priceLabel}
               onAddCard={handleCheckout}
             />
           </div>
