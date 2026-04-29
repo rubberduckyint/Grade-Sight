@@ -1,3 +1,7 @@
+// Values mirror @theme tokens in globals.css. Update both files together
+// if the palette changes — Clerk's appearance.variables API requires
+// literal CSS color values, not CSS custom property references, so we
+// can't share the source of truth.
 import type { Appearance } from "@clerk/types";
 
 export const gradeSightClerk: Appearance = {
