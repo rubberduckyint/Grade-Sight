@@ -26,7 +26,7 @@
   --color-insight:     oklch(0.72  0.12  72);
   --color-insight-soft:oklch(0.95  0.035 82);
 
-  /* Red — error marks on student work only. Never UI. */
+  /* Red — error marks on student work + the global error page eyebrow (ERR-XXX code). Never on toasts, form validation, or destructive button labels. */
   --color-mark:        oklch(0.56  0.15  28);
 
   /* Green — logo and success accents */
