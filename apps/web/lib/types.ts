@@ -9,7 +9,7 @@ export interface EntitlementResponse {
 export interface Student {
   id: string;
   full_name: string;
-  date_of_birth: string | null;
+  grade_level: number | null;
   created_at: string;
 }
 

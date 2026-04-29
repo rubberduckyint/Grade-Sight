@@ -34,9 +34,9 @@ export default async function StudentsPage() {
             {students.map((s) => (
               <li key={s.id} className="flex items-baseline justify-between py-3">
                 <span className="text-base text-ink">{s.full_name}</span>
-                {s.date_of_birth && (
+                {s.grade_level != null && (
                   <span className="font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
-                    DOB {s.date_of_birth}
+                    Grade {s.grade_level}
                   </span>
                 )}
               </li>

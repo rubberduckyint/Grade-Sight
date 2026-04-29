@@ -22,8 +22,11 @@ export function StudentPicker({
   const [query, setQuery] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newGrade, setNewGrade] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+
+  const GRADE_OPTIONS = [5, 6, 7, 8, 9, 10, 11, 12] as const;
 
   const filtered = students.filter((s) =>
     s.full_name.toLowerCase().includes(query.toLowerCase().trim()),
@@ -35,13 +38,21 @@ export function StudentPicker({
       setError("Name is required");
       return;
     }
+    if (!newGrade) {
+      setError("Grade is required");
+      return;
+    }
     setIsPending(true);
     try {
-      const created = await createStudent({ full_name: newName.trim() });
+      const created = await createStudent({
+        full_name: newName.trim(),
+        grade_level: Number(newGrade),
+      });
       onStudentAdded(created);
       onChange(created.id);
       setIsAdding(false);
       setNewName("");
+      setNewGrade("");
       setQuery("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add student");
@@ -53,17 +64,43 @@ export function StudentPicker({
   if (isAdding) {
     return (
       <div className="rounded-[var(--radius-sm)] border border-rule bg-paper-soft p-4">
-        <label htmlFor="new_student_name" className="block text-sm text-ink-soft">
-          New student name
-        </label>
-        <input
-          id="new_student_name"
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          className="mt-1 w-full rounded-[var(--radius-sm)] border border-rule bg-paper px-3 py-2 text-base text-ink focus-visible:outline-2 focus-visible:outline-accent"
-          autoFocus
-        />
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="new_student_name" className="block text-sm text-ink-soft">
+              New student name
+            </label>
+            <input
+              id="new_student_name"
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="mt-1 w-full rounded-[var(--radius-sm)] border border-rule bg-paper px-3 py-2 text-base text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label htmlFor="new_student_grade" className="block text-sm text-ink-soft">
+              Grade <span className="text-mark">*</span>
+            </label>
+            <select
+              id="new_student_grade"
+              value={newGrade}
+              onChange={(e) => setNewGrade(e.target.value)}
+              className="mt-1 w-full rounded-[var(--radius-sm)] border border-rule bg-paper px-3 py-2 text-base text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              disabled={isPending}
+              required
+            >
+              <option value="" disabled>
+                Select Grade
+              </option>
+              {GRADE_OPTIONS.map((g) => (
+                <option key={g} value={String(g)}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         {error && (
           <p className="mt-2 font-mono text-xs uppercase tracking-[0.12em] text-mark">
             {error}
@@ -79,6 +116,7 @@ export function StudentPicker({
             onClick={() => {
               setIsAdding(false);
               setNewName("");
+              setNewGrade("");
               setError(null);
             }}
             disabled={isPending}

@@ -26,7 +26,7 @@ async function callApi(path: string, init?: RequestInit): Promise<Response> {
 
 export async function createStudent(input: {
   full_name: string;
-  date_of_birth?: string;
+  grade_level: number;
 }): Promise<Student> {
   const response = await callApi(`/api/students`, {
     method: "POST",
