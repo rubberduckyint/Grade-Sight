@@ -219,7 +219,7 @@ function ParentFirstRun({
         Takes 30 seconds. You won&apos;t be charged.
       </p>
 
-      <TrustStripInline />
+      <ParentDashboardTrustStrip />
     </>
   );
 }
@@ -369,11 +369,12 @@ function FirstRunStep({
   );
 }
 
-// Inline trust strip — three bold-prefixed serif statements on paper-soft.
-// Distinct from the landing TrustBand (4-commitment grid). Appears at the
-// bottom of the parent first-run only — gives parents the privacy posture
-// at the point of first signup.
-function TrustStripInline() {
+// Three bold-prefixed serif statements on paper-soft. Distinct from the
+// landing TrustBand (4-commitment grid). Single-use: appears only at the
+// bottom of the parent first-run, giving parents the privacy posture at
+// the point of first signup. Name reflects the scope — if a second surface
+// ever needs the same pattern, that's the trigger to extract + rename.
+function ParentDashboardTrustStrip() {
   return (
     <div className="mt-14 rounded-[var(--radius-sm)] border border-rule-soft bg-paper-soft px-6 py-5 text-sm text-ink-soft">
       <div className="flex flex-wrap gap-x-7 gap-y-2">
