@@ -102,6 +102,9 @@ export async function fetchPrices(): Promise<PricesResponse> {
 // TODO(step-11): wire to aggregation endpoints once they land.
 // assessmentCount, interventionCount, and weeksOfHistory will come from
 // the data layer. Until then, /paywall right column gracefully omits.
+// Note: the step-11 tag is a historical breadcrumb, not a commitment —
+// v2 Step 11 is Inline correction + viewer and does NOT cover this.
+// Step 12 (Student Page biography) is the closest natural neighbor.
 // See docs/superpowers/plans/followups.md.
 export async function getTrialStats(_userId: string): Promise<TrialStats | null> {
   return null;

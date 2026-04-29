@@ -127,8 +127,9 @@ export default async function BillingSettingsPage() {
                 <dt className="font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
                   Card on file
                 </dt>
-                {/* TODO(step-13, billing-card-summary): expose default_payment_method
+                {/* TODO(billing-card-summary): expose default_payment_method
                     on the entitlement response (Stripe .subscription expand).
+                    No v2 step covers this — opportunistic pickup.
                     See docs/superpowers/plans/followups.md. */}
                 <dd className="mt-1 text-base text-ink-soft">—</dd>
               </div>
