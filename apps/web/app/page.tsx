@@ -13,6 +13,7 @@ const NAV_ANCHORS = [
   { label: "For teachers", href: "#for-teachers" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Privacy", href: "#privacy" },
+  { label: "Pricing", href: "#pricing" },
 ];
 
 const CATEGORIES = [
@@ -239,6 +240,7 @@ export default function Home() {
               No retention loopholes. This page exists because we think it
               should.
             </p>
+            {/* TODO: verify this link works once Step 13 builds /settings/privacy */}
             <Link
               href="/settings/privacy"
               className="mt-7 inline-block text-sm text-accent underline underline-offset-4"
@@ -265,7 +267,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 8. Final CTA */}
+      {/* 8a. Pricing — honest-money pitch, scroll target for the nav "Pricing" link */}
+      <section id="pricing" className="border-b border-rule-soft">
+        <div className="mx-auto max-w-[820px] px-6 py-24 text-center md:px-10 md:py-28">
+          <SectionEyebrow className="text-accent">Pricing</SectionEyebrow>
+          <div className="mt-5">
+            <SerifHeadline level="page">$15 per month.</SerifHeadline>
+          </div>
+          <p className="mt-5 text-lg text-ink-soft">
+            Cancel anytime. Your first 7 days are free.
+          </p>
+        </div>
+      </section>
+
+      {/* 8b. Final CTA */}
       <section className="border-b border-rule-soft">
         <div className="mx-auto max-w-[1200px] px-6 py-32 text-center md:px-10">
           <div className="mx-auto max-w-[780px]">

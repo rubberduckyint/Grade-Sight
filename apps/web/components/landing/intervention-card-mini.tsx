@@ -5,7 +5,7 @@
 
 export function InterventionCardMini() {
   return (
-    <div className="relative w-[380px] rounded-[var(--radius-sm)] border border-rule bg-paper px-7 py-7">
+    <div className="relative w-[380px] max-w-full rounded-[var(--radius-sm)] border border-rule bg-paper px-7 py-7">
       <div className="mb-3.5 font-mono text-xs uppercase tracking-[0.14em] text-ink-mute">
         Intervention · sign errors
       </div>

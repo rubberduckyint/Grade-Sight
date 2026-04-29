@@ -14,7 +14,7 @@ export function AssessmentMock({
   variant?: "full" | "minimal";
 }) {
   return (
-    <div className="relative h-[480px] w-[380px] overflow-hidden rounded-[var(--radius-sm)] border border-rule bg-paper px-6 py-5 font-hand text-xl leading-snug text-ink">
+    <div className="relative h-[480px] w-[380px] max-w-full overflow-hidden rounded-[var(--radius-sm)] border border-rule bg-paper px-6 py-5 font-hand text-xl leading-snug text-ink">
       <div className="mb-4 flex justify-between border-b border-rule-soft pb-2 font-sans text-xs uppercase tracking-[0.1em] text-ink-mute">
         <span>Algebra II · Unit 4 Quiz</span>
         <span>10 / 15</span>
