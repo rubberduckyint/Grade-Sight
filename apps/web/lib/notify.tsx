@@ -32,7 +32,7 @@ export const notify = {
             {eyebrow}
           </span>
           {options?.description && (
-            <span className="mt-1 block line-clamp-1">
+            <span className="mt-1 line-clamp-1">
               {options.description}
             </span>
           )}
