@@ -39,7 +39,7 @@ So Step 09 isn't "wire Sonner." It's "**finish wiring Sonner** to match the hand
 ## Scope
 
 - **Variants shipped:** `success` and `error`. No `info`, no `warning` — matches the handoff's amber/red restraint rules. Add later only if a real surface demands it.
-- **Single canonical helper:** `lib/notify.ts` exposing `notify.success(title, options?)` and `notify.error(title, options?)`.
+- **Single canonical helper:** `lib/notify.tsx` exposing `notify.success(title, options?)` and `notify.error(title, options?)`.
 - **No migration of existing setError sites.** Form-field validation stays inline (it should — toasts are for system feedback, not field-level validation per the handoff's "max 3 lines" tell). Server-error sites get migrated when their owning feature work picks them up.
 
 ## Architecture
@@ -52,8 +52,8 @@ Variants are visual-only, achieved by composing the `description` prop as JSX in
 
 | Path | Type | Purpose |
 |---|---|---|
-| `apps/web/lib/notify.ts` | new | Canonical entry point. Exposes `notify.success(title, options?)` and `notify.error(title, options?)`. ~40 lines. |
-| `apps/web/components/ui/sonner.tsx` | tweak | Add `closeButton: false` (no UI chrome), add `line-clamp-2` to the existing description className `text-sm text-ink-soft` (now `text-sm text-ink-soft line-clamp-2`). Duration defaults (4s success / 6s error) live in the `notify` helper, not the global Toaster config, so per-call overrides remain easy. ~3-line delta. |
+| `apps/web/lib/notify.tsx` | new | Canonical entry point. Exposes `notify.success(title, options?)` and `notify.error(title, options?)`. ~40 lines. |
+| `apps/web/app/layout.tsx` | tweak | The `<Toaster />` config lives in the root layout (not the `components/ui/sonner.tsx` wrapper). Add `closeButton={false}` and add `line-clamp-2` to the `toastOptions.classNames.description` className. Duration defaults (4s success / 6s error) live in the `notify` helper, not the global Toaster config, so per-call overrides remain easy. ~2-line delta. |
 | `apps/web/app/dev/primitives/page.tsx` | tweak | Replace the single "Trigger toast" demo with four buttons: success (no description), success (with description), error (no description), error (with description + custom eyebrow). |
 
 ## Helper API
@@ -113,8 +113,8 @@ Sonner's default `<Toaster />` sets `role="region"` with `aria-label="Notificati
 
 ## Verification checklist
 
-- `lib/notify.ts` exports `notify.success` and `notify.error` matching the API shape above.
-- `components/ui/sonner.tsx` updated with `closeButton: false`, durations, tighter description classes.
+- `lib/notify.tsx` exports `notify.success` and `notify.error` matching the API shape above.
+- `app/layout.tsx` `<Toaster />` updated with `closeButton={false}` and `line-clamp-2` on description className.
 - `/dev/primitives` shows four demo buttons that produce the four rendering shapes above.
 - `pnpm --filter web typecheck` clean.
 - Visual manual verification: each variant renders correctly with no red, no shadow, mono eyebrow on errors, line clamp truncates long descriptions.

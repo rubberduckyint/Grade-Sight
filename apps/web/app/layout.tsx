@@ -25,12 +25,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           {children}
           <Toaster
             theme="light"
+            closeButton={false}
             toastOptions={{
               classNames: {
                 toast:
                   "border border-rule bg-paper text-ink rounded-[var(--radius-sm)] shadow-none",
                 title: "font-serif text-base",
-                description: "text-sm text-ink-soft",
+                description: "text-sm text-ink-soft line-clamp-2",
                 actionButton: "bg-ink text-paper rounded-[var(--radius-sm)]",
                 cancelButton: "border border-rule text-ink rounded-[var(--radius-sm)]",
               },
