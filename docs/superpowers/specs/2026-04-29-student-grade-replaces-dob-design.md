@@ -34,7 +34,7 @@ Pydantic validation: `grade_level: int = Field(..., ge=5, le=12)` on `StudentCre
 |---|---|
 | `lib/types.ts` | `Student.date_of_birth` → remove. Add `Student.grade_level: number \| null`. |
 | `lib/actions.ts` | `addStudent` action: remove `date_of_birth?: string`, add `grade_level: number` (required). |
-| `components/add-student-form.tsx` | Replace the DOB date input with a `<select>` of options 5–12. Required (HTML `required` + the form submit handler refuses to submit without a selection). Default state: empty option labeled "Select Grade". Label: "Grade". No helper text. |
+| `components/add-student-form.tsx` | Replace the DOB date input with a native `<select>` of options 5–12. Required (HTML `required` + the form submit handler refuses to submit without a selection). Default state: disabled empty option labeled "Select Grade". Label: "Grade". No helper text. Native `<select>` matches the form's existing pattern (plain `<input>` elements styled with Tailwind) — no shadcn `<Select>` primitive is currently in the project. |
 | `app/students/page.tsx` | Replace the `DOB {...}` line with `Grade {grade_level}` (or omit gracefully if `grade_level` is null — only possible for legacy rows from before this change). |
 
 The grade `<select>` uses the existing shadcn/ui `<Select>` primitive (already in `components/ui/select.tsx`) for visual consistency with the rest of the form.
