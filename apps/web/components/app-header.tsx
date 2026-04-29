@@ -1,51 +1,10 @@
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { GSLogo } from "@/components/gs-logo";
 import { cn } from "@/lib/utils";
 
 export type AppHeaderTab = { label: string; href: string };
-
-function GSLogo({ size = 22 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      aria-hidden="true"
-      className="shrink-0 text-green"
-    >
-      <defs>
-        <mask id="gs-logo-mask">
-          <rect width="32" height="32" fill="white" />
-          <path
-            d="M 7 17 Q 11 20 14 23 Q 18 17 26 5"
-            stroke="black"
-            strokeWidth="6.5"
-            strokeLinecap="round"
-            fill="none"
-          />
-        </mask>
-      </defs>
-      <g mask="url(#gs-logo-mask)">
-        <circle
-          cx="16"
-          cy="16"
-          r="12"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.6"
-        />
-      </g>
-      <path
-        d="M 7 17 Q 11 20 14 23 Q 18 17 26 5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 export function AppHeader({
   orgName,
