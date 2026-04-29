@@ -557,9 +557,14 @@ export const gradeSightClerk: Appearance = {
       <p class="muted" style="margin: 6px 0 0;">Per Foundation · System. Skeleton blocks in <code>paper-deep</code>, no spinners.</p>
     </li>
     <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
-      <div class="eyebrow" style="margin-bottom: 6px;">STEP 08 · BILLING</div>
-      <h4>TrialBanner → /paywall → /settings/billing → PaywallInline.</h4>
-      <p class="muted" style="margin: 6px 0 0;">All four billing surfaces per Billing canvas. <code>/paywall</code> branches server-side — no client flicker between branches.</p>
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 08a · TRIAL SURFACES</div>
+      <h4>TrialBanner + PaywallInline + pricing endpoint.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Inline-during-flow surfaces from the Billing canvas. New public <code>GET /api/billing/prices</code> with 1h TTL cache resolves the price IDs in <code>.env</code> to live Stripe amounts; both components consume it via <code>fetchPrices()</code>.</p>
+    </li>
+    <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
+      <div class="eyebrow" style="margin-bottom: 6px;">STEP 08b · PAYWALL + SETTINGS</div>
+      <h4>/paywall → SettingsLayout → /settings/billing.</h4>
+      <p class="muted" style="margin: 6px 0 0;">Dedicated-page surfaces. <code>/paywall</code> branches server-side — no client flicker. <code>SettingsLayout</code> shell introduces the Profile / Privacy / Billing left rail with placeholder bodies for the not-yet-built tabs. Invoice list defers to Stripe portal (no inline replication).</p>
     </li>
     <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
       <div class="eyebrow" style="margin-bottom: 6px;">STEP 09 · TOASTS</div>
