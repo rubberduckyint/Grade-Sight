@@ -29,6 +29,10 @@
   /* Red — error marks on student work only. Never UI. */
   --color-mark:        oklch(0.56  0.15  28);
 
+  /* Green — logo and success accents */
+  --color-green:       oklch(0.62  0.18  145);
+  --color-green-deep:  oklch(0.52  0.17  145);
+
   /* Semantic aliases */
   --color-background:    var(--color-paper);
   --color-surface:       var(--color-paper);
