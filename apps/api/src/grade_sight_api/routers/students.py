@@ -77,28 +77,21 @@ async def create_student(
             detail="full_name is required",
         )
 
-    try:
-        student = Student(
-            created_by_user_id=user.id,
-            organization_id=user.organization_id,
-            full_name=payload.full_name.strip(),
-        )
-        db.add(student)
-        await db.flush()  # populate student.id
+    student = Student(
+        created_by_user_id=user.id,
+        organization_id=user.organization_id,
+        full_name=payload.full_name.strip(),
+    )
+    db.add(student)
+    await db.flush()  # populate student.id
 
-        profile = StudentProfile(
-            student_id=student.id,
-            organization_id=user.organization_id,
-            grade_level=str(payload.grade_level),
-        )
-        db.add(profile)
-        await db.flush()
-    except Exception:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create student",
-        )
+    profile = StudentProfile(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        grade_level=str(payload.grade_level),
+    )
+    db.add(profile)
+    await db.flush()
 
     return StudentResponse(
         id=student.id,
