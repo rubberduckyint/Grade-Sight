@@ -77,6 +77,8 @@ async def test_create_persists_student_and_profile_with_grade(
             select(Student).where(Student.full_name == "Marcus Park")
         )
     ).scalar_one()
+    assert student.organization_id == user.organization_id
+    assert student.created_by_user_id == user.id
     from grade_sight_api.models.student_profile import StudentProfile
 
     profile = (
@@ -146,6 +148,40 @@ async def test_create_rejects_grade_above_range(async_session: AsyncSession) -> 
     app.dependency_overrides.clear()
 
     assert response.status_code == 422
+
+
+async def test_create_rolls_back_student_on_profile_failure(
+    async_session: AsyncSession,
+) -> None:
+    """If the StudentProfile insert fails, the Student row must not persist."""
+    from unittest.mock import patch
+
+    user = await _seed_user(async_session)
+    _override_deps(user, async_session)
+
+    # Patch the StudentProfile constructor in the router module so the second
+    # insert raises. The first insert (Student) has already flushed, so this
+    # exercises the transaction-rollback path.
+    with patch(
+        "grade_sight_api.routers.students.StudentProfile",
+        side_effect=Exception("simulated profile failure"),
+    ):
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/students",
+                json={"full_name": "Rollback Test", "grade_level": 7},
+            )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 500
+    # The Student row from the first insert must not persist.
+    rows = (
+        await async_session.execute(
+            select(Student).where(Student.full_name == "Rollback Test")
+        )
+    ).scalars().all()
+    assert rows == []
 
 
 async def test_list_includes_grade_via_profile_join(
