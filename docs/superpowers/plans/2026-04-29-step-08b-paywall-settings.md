@@ -19,10 +19,11 @@ The two **dedicated-page** billing surfaces, plus the settings shell that hosts 
 2. **Invoice list defers to Stripe portal.** Canvas showed inline as aspiration; the right call is one-line mono microcopy ("Invoices, payment methods, and receipts") plus the existing "Open Stripe billing portal" CTA. Sibling `docs:` commit on this branch reconciles §Routes for `/settings/billing` to spell that out: *"Plan + payment-method summary inline. Invoice list and receipts open Stripe portal in new tab."*
 3. **Settings tabs: introduce shell now, build only Billing.** `<SettingsLayout>` lands in this PR. Profile/Privacy render placeholder bodies — never 404. Notifications is omitted from nav (no roadmap).
 4. **Follow-up issue.** Open `Wire /paywall right-column trial stats — assessmentCount, interventionCount, weeksOfHistory queries` and tag for Step 11 (likely lands with the data-aggregation work).
-5. **Recommendations locked at PR-draft time (2026-04-29).**
-   - Single-column `/paywall` ships intentionally — no faked stats. Step 11 reactivates the right column when `getTrialStats()` returns real numbers. Tracked in `docs/superpowers/plans/followups.md`.
-   - "Card on file" em-dash ships intentionally — Stripe portal handles all real card management today. Step 13 polish exposes `default_payment_method` and renders brand + last4. Tracked in `followups.md`; `TODO(step-13, billing-card-summary)` left in `app/settings/billing/page.tsx`.
-   - `/settings/profile` and `/settings/privacy` ship as `<SettingsLayout>`-wrapped "Coming soon — Step 13" stubs. By design, not a gap. Step 13 replaces the bodies; the shell is already wired.
+5. **Recommendations locked at PR-draft time (2026-04-29).** All three deferred items are indexed in `docs/superpowers/plans/followups.md`. Step assignments below were corrected after a re-read of the v2 implementation sequence — the v2 doc is the source of truth, not the historical "Step 11"/"Step 13" tags in this plan.
+   - Single-column `/paywall` ships intentionally — no faked stats. **No v2 step is a clean fit for the trial-stats queries** (Step 11 is *Inline correction + viewer*, not data aggregation). Step 12 (Student Page biography) is the closest neighbor; pickup is opportunistic. The `TODO(step-11)` tag in `lib/api.ts:102` is preserved as a historical breadcrumb only.
+   - "Card on file" em-dash ships intentionally — Stripe portal handles all real card management today. **No v2 step covers this**; pickup is opportunistic. `TODO(billing-card-summary)` left in `app/settings/billing/page.tsx`.
+   - `/settings/privacy` ships as a `<SettingsLayout>`-wrapped stub — replaced in **Step 13 (Operational Surfaces)** per the v2 doc, which explicitly schedules `/settings/privacy`.
+   - `/settings/profile` ships as a stub but is an **orphan** — no v2 step schedules it. Stub copy still says "lands Step 13" (carried over from the original plan); update once a scheduling decision is made (defer indefinitely / bundle into Step 13 / add a tail step).
 
 ## Implementation outline
 

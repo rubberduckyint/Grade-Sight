@@ -1,36 +1,71 @@
 # Cross-step followups
 
-Items deliberately deferred from one v2 step to a later one. When you start
-the destination step, grep this file for the step tag and resolve the entries.
+Items deliberately deferred from one v2 step to a later one, plus orphans
+that don't map to any scheduled step. When you start a step, grep this file
+for it; for orphans, surface them in planning.
 
-## When you start v2 Step 11 (data aggregation)
+The v2 sequence (Steps 01–15) is in §Implementation of
+`docs/design/Grade Sight Handoff v2.html`. Step labels here mean v2 steps,
+not Phase-1 specs.
 
-- **Wire `/paywall` right-column trial stats.**
-  - Source: Step 08b, `apps/web/lib/api.ts:102` (`TODO(step-11)`).
-  - Action: replace the `getTrialStats(userId): null` stub with a real query
-    that returns `{ assessmentCount, interventionCount, weeksOfHistory }`.
-  - Where it renders: `apps/web/app/paywall/page.tsx` — right column is
-    suppressed today; once stats return non-null, the canvas two-column
-    layout activates automatically.
-  - Origin decision (Step 08b): right column is conditional, not faked. Single-
-    column paywall ships intentionally until real numbers exist.
+## Paywall right-column trial stats — opportunistic
 
-## When you start v2 Step 13 (user settings polish)
+- **Marker:** `apps/web/lib/api.ts:102` (`TODO(step-11)` — historical tag,
+  see note below).
+- **Where it renders:** `apps/web/app/paywall/page.tsx` — right column is
+  suppressed today; once `getTrialStats(userId)` returns non-null, the
+  canvas two-column layout activates.
+- **Action:** replace the `null` stub with a real query that returns
+  `{ assessmentCount, interventionCount, weeksOfHistory }`.
+- **Origin decision (Step 08b):** right column is conditional, not faked.
+  Single-column paywall ships intentionally until real numbers exist.
+- **Step assignment:** **none in the v2 sequence is a clean fit.** The
+  Step 08b plan optimistically tagged "Step 11," but Step 11 is
+  *Inline correction + viewer*, which doesn't touch trial-stats queries.
+  Step 12 (*Student Page biography*) is the closest neighbor — it builds
+  longitudinal-aggregate queries that overlap with weeksOfHistory and
+  assessmentCount. Pick up either alongside Step 12 if the queries
+  generalize, or as a small opportunistic backend PR sooner. The
+  `TODO(step-11)` tag is preserved as a grep breadcrumb to the historical
+  intent — do not read it as a current commitment.
 
-- **Replace `/settings/profile` and `/settings/privacy` placeholder bodies.**
-  - Source: Step 08b, both pages render "Coming soon — this lands in Step 13."
-  - Files: `apps/web/app/settings/profile/page.tsx`,
-    `apps/web/app/settings/privacy/page.tsx`.
-  - Action: build the real bodies (name/email edit on Profile;
-    privacy/data-export controls on Privacy). The `<SettingsLayout>` shell
-    and top-tab nav are already in place.
+## Card-on-file summary on /settings/billing — opportunistic, low priority
 
-- **Show real "Card on file" summary on `/settings/billing`.**
-  - Source: Step 08b, `apps/web/app/settings/billing/page.tsx:130`
-    (`TODO(billing-card-summary)`).
-  - Action: expose `default_payment_method` on the entitlement response
-    (Stripe `subscription` expand) and render brand + last4 (e.g.
-    "Visa ···· 4242") in place of the current `—`.
-  - Origin decision (Step 08b): em-dash is intentional. Stripe portal already
-    handles all real card management via the existing "Manage billing in
-    Stripe" CTA, so the dash is non-blocking until Step 13 polish.
+- **Marker:** `apps/web/app/settings/billing/page.tsx:130`
+  (`TODO(billing-card-summary)`).
+- **Action:** expose `default_payment_method` on the entitlement response
+  (Stripe `subscription` expand) and render brand + last4 (e.g.
+  "Visa ···· 4242") in place of the current `—`.
+- **Origin decision (Step 08b):** em-dash is intentional. Stripe portal
+  already handles all real card management via the existing "Manage
+  billing in Stripe" CTA, so the dash is non-blocking.
+- **Step assignment:** **none.** No v2 step touches billing display
+  polish. Pick up whenever (small API change + UI swap).
+
+## /settings/privacy body — Step 13
+
+- **Files:** `apps/web/app/settings/privacy/page.tsx` (currently
+  "Coming soon — Step 13" stub inside the `<SettingsLayout>` shell).
+- **Step assignment:** **Step 13 · Operational Surfaces.** The handoff
+  doc explicitly schedules `/settings/privacy` as part of Step 13
+  (alongside `/assessments` and `/keys` per the Supporting Surfaces
+  canvas). When you start Step 13, replace the stub body with the real
+  privacy / data-export controls; the shell is already wired.
+
+## /settings/profile body — ORPHAN, needs scheduling
+
+- **Files:** `apps/web/app/settings/profile/page.tsx` (currently
+  "Coming soon — Step 13" stub).
+- **Problem:** the v2 sequence (Steps 01–15) does not schedule
+  `/settings/profile` anywhere. The Step 08b plan said "lands Step 13,"
+  and the stub copy still says so, but Step 13 only covers
+  `/settings/privacy`. The page has no scheduled implementer.
+- **Action needed:** decide one of —
+  - (a) defer indefinitely, leave the stub forever (acceptable if Profile
+    is non-MVP);
+  - (b) bundle into Step 13 informally (add it to the Step 13 plan when
+    that plan is written);
+  - (c) add a tail step (Step 16+) for Profile + any other account-polish
+    that doesn't fit elsewhere.
+- The stub copy currently lies ("lands Step 13"). Update it once the
+  scheduling decision is made.
