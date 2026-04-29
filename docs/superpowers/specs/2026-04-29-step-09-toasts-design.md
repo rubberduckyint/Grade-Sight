@@ -44,7 +44,7 @@ So Step 09 isn't "wire Sonner." It's "**finish wiring Sonner** to match the hand
 
 ## Architecture
 
-One new helper file. One tweak to the existing Sonner config. Demo buttons on `/dev/primitives` for visual verification. No changes to `app/layout.tsx` (already correctly mounted).
+One new helper file. One tweak to the existing Sonner config. Demo buttons on `/dev/primitives` for visual verification. Two lines added to `app/layout.tsx`: `closeButton={false}` on the `<Toaster />` and `line-clamp-2` appended to the `toastOptions.classNames.description` className.
 
 Variants are visual-only, achieved by composing the `description` prop as JSX inside the helper. We do **not** route through Sonner's built-in `toast.error()` — that triggers default red icon/styling that fights our editorial palette. The helper renders plain `toast()` calls and constructs the variant treatment in the description JSX.
 
