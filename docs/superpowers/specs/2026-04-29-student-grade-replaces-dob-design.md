@@ -26,7 +26,7 @@ CLAUDE.md commits to "data minimization: collect only what's needed." `students.
 | `routers/students.py` | `create_student`: validate `5 <= grade_level <= 12`. In one transaction: insert `Student`, then insert `StudentProfile` with `grade_level` and the new student's `id`. `list_students`: join to `student_profiles` and include `grade_level` in the response. |
 | `alembic/versions/<new>_drop_student_dob.py` | New migration: `op.drop_column('students', 'date_of_birth')`. Down migration re-adds the nullable column. |
 
-Pydantic validation: `grade_level: int = Field(..., ge=5, le=12)` on `StudentCreate`. Server returns 400 for out-of-range or missing values.
+Pydantic validation: `grade_level: int = Field(..., ge=5, le=12)` on `StudentCreate`. Server returns 422 for out-of-range or missing values (FastAPI's standard Pydantic validation error code). Empty / whitespace-only `full_name` returns 400 from a manual check in the router.
 
 ### Frontend (apps/web)
 
@@ -68,7 +68,7 @@ Add to `tests/routers/test_students_router.py`:
 - `test_create_student_grade_required` — POST without grade → 422.
 - `test_create_student_grade_below_range` — POST with grade 4 → 422.
 - `test_create_student_grade_above_range` — POST with grade 13 → 422.
-- `test_create_student_atomicity` — induce a failure on profile insert, assert students table has no orphan row.
+- ~~`test_create_student_atomicity`~~ — **dropped during implementation review.** The atomicity property is provided by the request-scoped `get_session` dependency at `apps/api/src/grade_sight_api/db/session.py:65–78`, not by per-endpoint code. An endpoint-level test would only exercise unnecessary defensive code; the property is implicitly tested across the entire codebase by every endpoint that uses the dependency.
 - `test_list_students_includes_grade` — pre-seed a student + profile, GET → response includes `grade_level`.
 
 Drop or update existing `date_of_birth`-related test cases.
