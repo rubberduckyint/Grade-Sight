@@ -44,6 +44,7 @@ def setup_sentry(*, environment: str, dsn: str | None) -> None:
         traces_sample_rate=0.1,
         send_default_pii=False,
         before_send=cast("EventProcessor", scrub_event),
+        debug=True,
     )
     sentry_sdk.set_tag("service", "api")
     logger.info("Sentry initialized: environment=%s release=%s", environment, release)
