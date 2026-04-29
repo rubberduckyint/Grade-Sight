@@ -62,9 +62,3 @@ async def db_health(db: AsyncSession = Depends(get_session)) -> dict[str, object
         ) from exc
     latency_ms = int((time.perf_counter() - started) * 1000)
     return {"status": "ok", "latency_ms": latency_ms}
-
-
-@app.get("/api/_smoke/raise")
-def smoke_raise() -> None:
-    """TEMPORARY: Spec 13 Sentry smoke test. Remove after verification."""
-    raise RuntimeError("sentry smoke test")
