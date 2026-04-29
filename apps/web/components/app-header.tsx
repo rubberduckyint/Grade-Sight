@@ -1,18 +1,108 @@
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function AppHeader({ orgName }: { orgName?: string | null }) {
+export type AppHeaderTab = { label: string; href: string };
+
+function GSLogo({ size = 22 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+      className="shrink-0 text-green"
+    >
+      <defs>
+        <mask id="gs-logo-mask">
+          <rect width="32" height="32" fill="white" />
+          <path
+            d="M 7 17 Q 11 20 14 23 Q 18 17 26 5"
+            stroke="black"
+            strokeWidth="6.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </mask>
+      </defs>
+      <g mask="url(#gs-logo-mask)">
+        <circle
+          cx="16"
+          cy="16"
+          r="12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.6"
+        />
+      </g>
+      <path
+        d="M 7 17 Q 11 20 14 23 Q 18 17 26 5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function AppHeader({
+  orgName,
+  tabs,
+  activeHref,
+  uploadHref,
+  uploadLabel = "Upload assessment",
+}: {
+  orgName?: string | null;
+  tabs?: AppHeaderTab[];
+  activeHref?: string;
+  uploadHref?: string;
+  uploadLabel?: string;
+}) {
   return (
     <header className="border-b border-rule-soft bg-paper">
-      <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-4 md:px-10">
-        <Link
-          href="/dashboard"
-          className="font-serif text-xl tracking-[-0.01em] text-ink hover:opacity-80"
-        >
-          Grade Sight
-        </Link>
+      <div className="mx-auto flex max-w-[1200px] items-stretch justify-between px-6 py-3.5 md:px-10">
+        <div className="flex items-end gap-9">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2.5 text-ink hover:opacity-80"
+          >
+            <GSLogo size={22} />
+            <span className="font-serif text-xl font-medium tracking-[-0.012em]">
+              Grade Sight
+            </span>
+          </Link>
+          {tabs && tabs.length > 0 && (
+            <nav className="flex items-end gap-7" aria-label="Main">
+              {tabs.map((tab) => {
+                const active = tab.href === activeHref;
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "border-b-2 pb-3.5 text-base transition-colors",
+                      active
+                        ? "border-ink font-medium text-ink"
+                        : "border-transparent font-normal text-ink-soft hover:text-ink",
+                    )}
+                  >
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+        </div>
         <div className="flex items-center gap-4">
           {orgName && <span className="text-sm text-ink-soft">{orgName}</span>}
+          {uploadHref && (
+            <Button asChild>
+              <Link href={uploadHref}>{uploadLabel}</Link>
+            </Button>
+          )}
           <UserButton
             appearance={{
               elements: {
