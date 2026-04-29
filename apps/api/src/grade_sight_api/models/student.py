@@ -1,12 +1,11 @@
 """Student model (PII).
 
-Holds identifiable data: names, DOB, consent flags. Learning data lives in
+Holds identifiable data: names, consent flags. Learning data lives in
 student_profiles (linked 1:1). Never put learning fields on this table.
 """
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -27,7 +26,6 @@ class Student(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
         nullable=False,
     )
     full_name: Mapped[str] = mapped_column(nullable=False)
-    date_of_birth: Mapped[date | None] = mapped_column(nullable=True)
     consent_flags: Mapped[dict[str, Any]] = mapped_column(
         JSONB,
         nullable=False,

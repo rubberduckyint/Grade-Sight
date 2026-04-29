@@ -2,24 +2,22 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class StudentCreate(BaseModel):
     full_name: str
-    date_of_birth: date | None = None
+    grade_level: int = Field(..., ge=5, le=12)
 
 
 class StudentResponse(BaseModel):
     id: UUID
     full_name: str
-    date_of_birth: date | None
+    grade_level: int | None
     created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class StudentListResponse(BaseModel):

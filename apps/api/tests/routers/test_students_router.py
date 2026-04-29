@@ -52,43 +52,144 @@ def _override_deps(user: User, session: AsyncSession) -> None:
     app.dependency_overrides[get_session] = _session_override
 
 
-async def test_create_persists_with_org_id(async_session: AsyncSession) -> None:
+async def test_create_persists_student_and_profile_with_grade(
+    async_session: AsyncSession,
+) -> None:
     user = await _seed_user(async_session)
     _override_deps(user, async_session)
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
-            r = await client.post(
-                "/api/students",
-                json={"full_name": "Ada Lovelace"},
-                headers={"Authorization": "Bearer fake"},
-            )
-    finally:
-        app.dependency_overrides.clear()
 
-    assert r.status_code == 201
-    body = r.json()
-    assert body["full_name"] == "Ada Lovelace"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/students",
+            json={"full_name": "Marcus Park", "grade_level": 8},
+        )
+    app.dependency_overrides.clear()
 
-    rows = (await async_session.execute(select(Student))).scalars().all()
-    assert len(rows) == 1
-    assert rows[0].organization_id == user.organization_id
-    assert rows[0].created_by_user_id == user.id
+    assert response.status_code == 201
+    body = response.json()
+    assert body["full_name"] == "Marcus Park"
+    assert body["grade_level"] == 8
+
+    # Both rows exist and are linked.
+    student = (
+        await async_session.execute(
+            select(Student).where(Student.full_name == "Marcus Park")
+        )
+    ).scalar_one()
+    from grade_sight_api.models.student_profile import StudentProfile
+
+    profile = (
+        await async_session.execute(
+            select(StudentProfile).where(StudentProfile.student_id == student.id)
+        )
+    ).scalar_one()
+    assert profile.grade_level == "8"
+    assert profile.organization_id == user.organization_id
 
 
 async def test_create_rejects_empty_full_name(async_session: AsyncSession) -> None:
     user = await _seed_user(async_session)
     _override_deps(user, async_session)
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
-            r = await client.post(
-                "/api/students",
-                json={"full_name": ""},
-                headers={"Authorization": "Bearer fake"},
-            )
-    finally:
-        app.dependency_overrides.clear()
 
-    assert r.status_code == 400
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/students",
+            json={"full_name": "   ", "grade_level": 8},
+        )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+
+
+async def test_create_rejects_missing_grade(async_session: AsyncSession) -> None:
+    user = await _seed_user(async_session)
+    _override_deps(user, async_session)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/students",
+            json={"full_name": "Marcus Park"},
+        )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+
+
+async def test_create_rejects_grade_below_range(async_session: AsyncSession) -> None:
+    user = await _seed_user(async_session)
+    _override_deps(user, async_session)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/students",
+            json={"full_name": "Marcus Park", "grade_level": 4},
+        )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+
+
+async def test_create_rejects_grade_above_range(async_session: AsyncSession) -> None:
+    user = await _seed_user(async_session)
+    _override_deps(user, async_session)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/students",
+            json={"full_name": "Marcus Park", "grade_level": 13},
+        )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+
+
+async def test_list_includes_grade_via_profile_join(
+    async_session: AsyncSession,
+) -> None:
+    """list_students LEFT-JOINs student_profiles and surfaces grade_level."""
+    from grade_sight_api.models.student_profile import StudentProfile
+
+    user = await _seed_user(async_session)
+
+    # Seed two students: one with a profile, one without (legacy row).
+    student_a = Student(
+        created_by_user_id=user.id,
+        organization_id=user.organization_id,
+        full_name="With Profile",
+    )
+    student_b = Student(
+        created_by_user_id=user.id,
+        organization_id=user.organization_id,
+        full_name="Legacy Row",
+    )
+    async_session.add_all([student_a, student_b])
+    await async_session.flush()
+    async_session.add(
+        StudentProfile(
+            student_id=student_a.id,
+            organization_id=user.organization_id,
+            grade_level="9",
+        )
+    )
+    await async_session.flush()
+
+    _override_deps(user, async_session)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/students")
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    by_name = {s["full_name"]: s for s in body["students"]}
+    assert by_name["With Profile"]["grade_level"] == 9
+    assert by_name["Legacy Row"]["grade_level"] is None
 
 
 async def test_list_returns_only_user_org_students(async_session: AsyncSession) -> None:
