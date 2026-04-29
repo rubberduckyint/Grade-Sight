@@ -8,6 +8,34 @@ The v2 sequence (Steps 01–15) is in §Implementation of
 `docs/design/Grade Sight Handoff v2.html`. Step labels here mean v2 steps,
 not Phase-1 specs.
 
+## Future v2 steps to schedule (not in current sequence)
+
+These are real product surfaces the v2 design canvas hasn't covered yet.
+Brainstorm and design before scheduling.
+
+### Teacher class-creation flow
+
+Surfaced 2026-04-29 during the student-grade brainstorm. Teacher creates a
+named class (e.g., "second period") with a subject (dropdown of common math
+courses + custom write-in for cases like "algebra zero period extra help"),
+then adds students. Schema is fully ready: `classes` (Klass), `class_members`
+(M2M with historical `left_at`), `assessments.class_id` are all in place
+from Spec 2. Missing: `/api/classes` and `/api/class-members` routers; UI
+for class create/list/edit; UI for adding students to a class.
+
+Common-math subject dropdown options (write-in supported as "Other…"):
+Pre-Algebra · Algebra 1 · Geometry · Algebra 2 · Pre-Calculus · Calculus ·
+Statistics.
+
+### Bulk-grade workflow ("teacher loop")
+
+Surfaced same brainstorm. Teacher creates a test (= named answer key, e.g.
+"Chapter 2 Quiz 1"), uploads the answer key once, then loops through the
+class roster: per-student photo upload → analyze → print intervention
+(Step 14) → next student. Schema supports it (multiple assessments share
+one `answer_key_id`); missing is the queue-through UX. Probably depends
+on the class flow above.
+
 ## Paywall right-column trial stats — opportunistic
 
 - **Marker:** `apps/web/lib/api.ts:102` (`TODO(step-11)` — historical tag,
