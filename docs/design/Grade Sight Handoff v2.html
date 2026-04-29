@@ -417,6 +417,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <tr><td><code>/settings/privacy</code></td><td>both</td><td>Plain-English data controls</td><td>Supporting · Privacy</td></tr>
     <tr><td><code>/m/upload</code></td><td>parent</td><td>Mobile camera flow (375w)</td><td>Supporting · Mobile</td></tr>
   </table>
+
+  <h3 style="margin-top: 40px;">Header tabs vary by role</h3>
+  <p class="muted" style="margin-top: 8px; max-width: 640px;">
+    Parent gets <strong style="color: var(--ink);">2 tabs</strong> in <code>AppHeader</code>: Dashboard / Students. Teacher gets <strong style="color: var(--ink);">4 tabs</strong>: Dashboard / Students / Assessments / Answer keys. Parents see assessment history inline on the per-student page, so a separate History tab is redundant for them. Confirmed Step 05.
+  </p>
 </section>
 
 <!-- COPY -->
