@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 
 // Step 02 verification mount. Throwaway route — delete or gate behind a
 // dev flag once the editorial system is fully shipped.
@@ -172,15 +172,42 @@ export default function PrimitivesPage() {
         </Section>
 
         <Section label="Sonner (toast)">
-          <Button
-            onClick={() =>
-              toast("Toast triggered", {
-                description: "Themed via app/layout.tsx toastOptions.",
-              })
-            }
-          >
-            Trigger toast
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => notify.success("Student added")}
+            >
+              Success (no body)
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                notify.success("Student added", {
+                  description: "Marcus Park · Grade 8",
+                })
+              }
+            >
+              Success (with body)
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => notify.error("Couldn't save student")}
+            >
+              Error (default eyebrow)
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                notify.error("Couldn't save", {
+                  eyebrow: "UPLOAD FAILED",
+                  description:
+                    "The connection timed out after 30 seconds. This long body should clamp to one line so the toast stays inside the three-line cap from the handoff doc.",
+                })
+              }
+            >
+              Error (custom eyebrow + long body)
+            </Button>
+          </div>
         </Section>
       </div>
     </main>
