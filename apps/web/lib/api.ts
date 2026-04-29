@@ -11,6 +11,8 @@ export type {
   AssessmentStatus,
   AssessmentUploadIntent,
   EntitlementResponse,
+  PriceInfo,
+  PricesResponse,
   Student,
 } from "./types";
 
@@ -19,6 +21,7 @@ import type {
   AssessmentDetail,
   AssessmentListItem,
   EntitlementResponse,
+  PricesResponse,
   Student,
 } from "./types";
 
@@ -82,6 +85,16 @@ export async function createPortalSession(): Promise<string> {
   }
   const body = (await response.json()) as { url: string };
   return body.url;
+}
+
+export async function fetchPrices(): Promise<PricesResponse> {
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/billing/prices`, {
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`GET /api/billing/prices failed: ${response.status}`);
+  }
+  return (await response.json()) as PricesResponse;
 }
 
 // ---- Students ----
