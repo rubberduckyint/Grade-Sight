@@ -134,3 +134,9 @@ export interface PricesResponse {
     teacher_monthly: PriceInfo;
   };
 }
+
+export interface TrialStats {
+  assessmentCount: number;
+  interventionCount: number;
+  weeksOfHistory: number;
+}

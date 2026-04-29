@@ -305,6 +305,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <tr><td><code>Paywall</code> (page)</td><td>app/paywall/page.tsx</td><td>Button</td><td>Billing · 3 branch states</td></tr>
     <tr><td><code>PaywallInline</code></td><td>components/paywall-inline.tsx</td><td>Card, Button</td><td>Billing · Inline block</td></tr>
     <tr><td><code>BillingPage</code></td><td>app/settings/billing/page.tsx</td><td>Card, Button, Separator, Badge</td><td>Billing · Settings</td></tr>
+    <tr><td><code>SettingsLayout</code></td><td>app/settings/layout.tsx</td><td>—</td><td>Horizontal top tabs. Active tab gets ink underline. Border-rule-soft below the tab strip.</td></tr>
     <tr><td><code>LoadingState</code></td><td>app/loading.tsx</td><td>Skeleton</td><td>Foundation · System</td></tr>
     <tr><td><code>ErrorState</code></td><td>app/error.tsx</td><td>Button</td><td>Foundation · System</td></tr>
     <tr><td><code>NotFound</code></td><td>app/not-found.tsx</td><td>Button</td><td>Foundation · System</td></tr>
@@ -413,7 +414,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <tr><td><code>/keys</code></td><td>teacher</td><td>Answer-key library</td><td>Supporting · Keys</td></tr>
     <tr><td><code>/print/intervention/[id]</code></td><td>both</td><td>Print-only 8.5×11 sheet</td><td>Supporting · Intervention</td></tr>
     <tr><td><code>/paywall</code></td><td>both</td><td>3 server-branched states</td><td>Billing · Paywall</td></tr>
-    <tr><td><code>/settings/billing</code></td><td>both</td><td>Plan, card, invoices</td><td>Billing · Settings</td></tr>
+    <tr><td><code>/settings/billing</code></td><td>both</td><td>Plan + payment-method summary inline. Invoice list and receipts open Stripe portal in new tab.</td><td>Billing · Settings</td></tr>
     <tr><td><code>/settings/privacy</code></td><td>both</td><td>Plain-English data controls</td><td>Supporting · Privacy</td></tr>
     <tr><td><code>/m/upload</code></td><td>parent</td><td>Mobile camera flow (375w)</td><td>Supporting · Mobile</td></tr>
   </table>
@@ -564,7 +565,7 @@ export const gradeSightClerk: Appearance = {
     <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
       <div class="eyebrow" style="margin-bottom: 6px;">STEP 08b · PAYWALL + SETTINGS</div>
       <h4>/paywall → SettingsLayout → /settings/billing.</h4>
-      <p class="muted" style="margin: 6px 0 0;">Dedicated-page surfaces. <code>/paywall</code> branches server-side — no client flicker. <code>SettingsLayout</code> shell introduces the Profile / Privacy / Billing left rail with placeholder bodies for the not-yet-built tabs. Invoice list defers to Stripe portal (no inline replication).</p>
+      <p class="muted" style="margin: 6px 0 0;">Dedicated-page surfaces. <code>/paywall</code> branches server-side — no client flicker. <code>SettingsLayout</code> shell introduces the Profile / Privacy / Billing top-tab nav with placeholder bodies for the not-yet-built tabs. Invoice list defers to Stripe portal (no inline replication).</p>
     </li>
     <li style="counter-increment: step; padding: 22px 0; border-top: 1px solid var(--rule-soft);">
       <div class="eyebrow" style="margin-bottom: 6px;">STEP 09 · TOASTS</div>
