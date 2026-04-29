@@ -15,8 +15,10 @@ from ..schemas.billing import (
     CheckoutSessionResponse,
     EntitlementResponse,
     PortalSessionResponse,
+    PriceInfo,
+    PricesResponse,
 )
-from ..services import stripe_service
+from ..services import stripe_pricing, stripe_service
 
 router = APIRouter()
 
@@ -131,3 +133,10 @@ async def portal(
         return_url=return_url,
     )
     return PortalSessionResponse(url=session.url)
+
+
+@router.get("/api/billing/prices", response_model=PricesResponse)
+async def prices() -> PricesResponse:
+    """Return live Stripe pricing for all plans. Public, no auth required."""
+    raw = await stripe_pricing.get_all_prices()
+    return PricesResponse(prices={k: PriceInfo(**v) for k, v in raw.items()})

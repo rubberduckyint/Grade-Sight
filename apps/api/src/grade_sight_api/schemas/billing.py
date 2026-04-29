@@ -30,3 +30,18 @@ class PortalSessionResponse(BaseModel):
     """Returned by POST /api/billing/portal."""
 
     url: str
+
+
+class PriceInfo(BaseModel):
+    """A single plan's live Stripe pricing."""
+
+    plan: str
+    unit_amount: int
+    currency: str
+    interval: str
+
+
+class PricesResponse(BaseModel):
+    """Returned by GET /api/billing/prices. Public, no-auth."""
+
+    prices: dict[str, PriceInfo]
