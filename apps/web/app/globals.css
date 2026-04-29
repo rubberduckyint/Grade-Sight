@@ -25,7 +25,6 @@
   /* Diagnostic amber — insight moments only */
   --color-insight:     oklch(0.72  0.12  72);
   --color-insight-soft:oklch(0.95  0.035 82);
-  --color-insight-text:oklch(0.48  0.12  72);
 
   /* Red — error marks on student work only. Never UI. */
   --color-mark:        oklch(0.56  0.15  28);
@@ -73,24 +72,8 @@
 }
 
 @layer base {
-  html {
-    font-size: 18px;
-    font-family: var(--font-sans);
-    color: var(--color-ink);
-    background: var(--color-paper);
-  }
-  body {
-    font-family: var(--font-sans);
-    font-size: var(--text-base);
-    line-height: var(--leading-normal);
-  }
-  :focus-visible {
-    outline: 2px solid var(--ring-color);
-    outline-offset: var(--ring-offset);
-    border-radius: var(--radius-sm);
-  }
-  ::selection {
-    background: var(--color-accent-soft);
-    color: var(--color-ink);
-  }
+  html { font-size: 18px; font-family: var(--font-sans); color: var(--color-ink); background: var(--color-paper); }
+  body { font-family: var(--font-sans); font-size: var(--text-base); line-height: var(--leading-normal); }
+  :focus-visible { outline: 2px solid var(--ring-color); outline-offset: var(--ring-offset); border-radius: var(--radius-sm); }
+  ::selection { background: var(--color-accent-soft); color: var(--color-ink); }
 }
