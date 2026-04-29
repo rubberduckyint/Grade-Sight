@@ -1,9 +1,10 @@
-import type { ComponentProps } from "react";
-import { SignIn } from "@clerk/nextjs";
+// Values mirror @theme tokens in globals.css. Update both files together
+// if the palette changes — Clerk's appearance.variables API requires
+// literal CSS color values, not CSS custom property references, so we
+// can't share the source of truth.
+import type { Appearance } from "@clerk/types";
 
-type ClerkAppearance = NonNullable<ComponentProps<typeof SignIn>["appearance"]>;
-
-export const gradeSightClerk: ClerkAppearance = {
+export const gradeSightClerk: Appearance = {
   variables: {
     colorPrimary:        "oklch(0.22 0.015 75)",   // ink
     colorText:           "oklch(0.22 0.015 75)",
