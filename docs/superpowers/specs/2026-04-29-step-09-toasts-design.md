@@ -136,11 +136,6 @@ Sonner's default `<Toaster />` sets `role="region"` with `aria-label="Notificati
 6. Serif = meaning, sans = doing — pass (serif for the title content, sans for description and mono caps eyebrow which is system signal).
 7. Matches reference canvas — N/A (handoff doc text-only spec for Step 09, no canvas mock).
 
-## Open questions
+## Locked decisions
 
-**Description text size — `text-sm` (14px) is below the handoff's 15px body floor.** The toaster config in `layout.tsx:33` already uses `text-sm`, so this matches the existing pattern, but the seven-item checklist's Rule 5 says "nothing you authored is below 15px." Two ways to read it:
-
-- **Read A (current):** the 15px floor is for primary content; toasts are ephemeral system feedback and the existing 14px description size is the established convention. Ship as-is.
-- **Read B:** the rule is absolute. Bump description to `text-base` (16px). Toast width may need to grow to accommodate.
-
-Default to Read A — matches what shipped in Step 02 and avoids invalidating the existing `<Toaster />` config without explicit user direction.
+**Description text stays at `text-sm` (14px).** Confirmed 2026-04-29. The handoff's 15px floor is for primary content; toasts are ephemeral system feedback. Matches the existing `<Toaster />` config from Step 02 (`layout.tsx:33`).
