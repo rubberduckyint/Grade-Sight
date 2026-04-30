@@ -8,6 +8,7 @@ from .answer_key import AnswerKey
 from .answer_key_page import AnswerKeyPage
 from .assessment import Assessment, AssessmentStatus
 from .assessment_diagnosis import AssessmentDiagnosis
+from .diagnostic_review import DiagnosticReview
 from .assessment_page import AssessmentPage
 from .audit_log import AuditLog
 from .class_member import ClassMember
@@ -29,6 +30,7 @@ __all__ = [
     "AnswerKeyPage",
     "Assessment",
     "AssessmentDiagnosis",
+    "DiagnosticReview",
     "AssessmentPage",
     "AssessmentStatus",
     "AuditLog",

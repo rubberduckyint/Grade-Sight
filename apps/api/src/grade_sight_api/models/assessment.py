@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .answer_key import AnswerKey
     from .assessment_diagnosis import AssessmentDiagnosis
     from .assessment_page import AssessmentPage
+    from .diagnostic_review import DiagnosticReview
 
 
 class AssessmentStatus(enum.StrEnum):
@@ -84,5 +85,13 @@ class Assessment(Base, TimestampMixin, SoftDeleteMixin, TenantMixin):
     )
     answer_key: Mapped[AnswerKey | None] = relationship(
         "AnswerKey",
+        lazy="select",
+    )
+    diagnostic_reviews: Mapped[list[DiagnosticReview]] = relationship(
+        "DiagnosticReview",
+        back_populates="assessment",
+        cascade="all, delete-orphan",
+        primaryjoin="and_(Assessment.id == DiagnosticReview.assessment_id, DiagnosticReview.deleted_at.is_(None))",
+        viewonly=True,
         lazy="select",
     )
