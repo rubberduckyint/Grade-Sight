@@ -1,15 +1,11 @@
-interface ViewerPage {
-  page_number: number;
-  original_filename: string;
-  view_url: string;
-}
+import type { AssessmentDetailPage } from "@/lib/types";
 
 export function ViewerPanel({
   label,
   pages,
 }: {
   label: string;
-  pages: ViewerPage[];
+  pages: AssessmentDetailPage[];
 }) {
   const total = pages.length;
   const sorted = [...pages].sort((a, b) => a.page_number - b.page_number);

@@ -79,7 +79,7 @@ export function DiagnosisHeader({
                 {detail.answer_key.name}
               </Link>
             </span>
-            {role === "teacher" ? (
+            {role === "teacher" && detail.diagnosis?.analysis_mode === "with_key" ? (
               <>
                 <span aria-hidden="true">·</span>
                 <Link
