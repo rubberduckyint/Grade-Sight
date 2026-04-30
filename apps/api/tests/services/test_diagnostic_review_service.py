@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from grade_sight_api.schemas.assessments import ProblemObservation
+from grade_sight_api.schemas.assessments import ProblemObservationResponse
 from grade_sight_api.services.diagnostic_review_service import (
     OverlayInputs,
     apply_reviews_to_problems,
@@ -15,8 +15,8 @@ from grade_sight_api.services.diagnostic_review_service import (
 
 def _make_problem(
     *, problem_number: int, is_correct: bool, error_pattern_slug: str | None = None
-) -> ProblemObservation:
-    return ProblemObservation(
+) -> ProblemObservationResponse:
+    return ProblemObservationResponse(
         id=uuid4(),
         problem_number=problem_number,
         page_number=1,

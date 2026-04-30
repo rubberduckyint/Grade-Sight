@@ -68,26 +68,6 @@ class ProblemObservationResponse(BaseModel):
     error_category_slug: str | None
     error_description: str | None
     solution_steps: str | None
-
-
-class ProblemObservation(BaseModel):
-    """Rich problem observation schema used by the service overlay layer.
-
-    Extends the API response shape with a ``review`` sub-object so that
-    teacher corrections can be attached before serialisation.
-    """
-
-    id: UUID
-    problem_number: int
-    page_number: int
-    student_answer: str
-    correct_answer: str
-    is_correct: bool
-    error_pattern_slug: str | None
-    error_pattern_name: str | None
-    error_category_slug: str | None
-    error_description: str | None
-    solution_steps: str | None
     review: DiagnosticReviewOut | None = None
 
 

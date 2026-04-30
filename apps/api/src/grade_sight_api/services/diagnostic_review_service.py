@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from grade_sight_api.schemas.assessments import ProblemObservation
+from grade_sight_api.schemas.assessments import ProblemObservationResponse
 from grade_sight_api.schemas.diagnostic_reviews import DiagnosticReviewOut
 
 
@@ -32,16 +32,16 @@ class _PatternRow(Protocol):
 
 @dataclass
 class OverlayInputs:
-    problems: list[ProblemObservation]
+    problems: list[ProblemObservationResponse]
     reviews: list[_ReviewRow]
     pattern_index: dict[UUID, _PatternRow]
 
 
-def apply_reviews_to_problems(inputs: OverlayInputs) -> list[ProblemObservation]:
+def apply_reviews_to_problems(inputs: OverlayInputs) -> list[ProblemObservationResponse]:
     """Return the problems with effective state applied and review sub-objects populated."""
 
     by_number: dict[int, _ReviewRow] = {r.problem_number: r for r in inputs.reviews}
-    out: list[ProblemObservation] = []
+    out: list[ProblemObservationResponse] = []
 
     for problem in inputs.problems:
         review = by_number.get(problem.problem_number)
