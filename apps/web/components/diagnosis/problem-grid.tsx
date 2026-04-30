@@ -12,7 +12,7 @@ export function ProblemGrid({ problems }: { problems: ProblemObservation[] }) {
         Everything else
       </p>
       <p className="font-sans text-base text-ink-soft mt-2 max-w-[60ch]">
-        Tap any problem to scroll to its row above.
+        Tap an amber square to jump to the row above.
       </p>
       <ul
         role="list"
