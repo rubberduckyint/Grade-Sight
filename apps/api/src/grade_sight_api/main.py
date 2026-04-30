@@ -15,6 +15,7 @@ from .db import engine, get_session
 from .routers import answer_keys as answer_keys_router
 from .routers import assessments as assessments_router
 from .routers import billing as billing_router
+from .routers import diagnostic_reviews as diagnostic_reviews_router
 from .routers import error_patterns as error_patterns_router
 from .routers import me as me_router
 from .routers import students as students_router
@@ -40,6 +41,7 @@ app.include_router(billing_router.router)
 app.include_router(students_router.router)
 app.include_router(answer_keys_router.router)
 app.include_router(assessments_router.router)
+app.include_router(diagnostic_reviews_router.router)
 app.include_router(error_patterns_router.router)
 app.include_router(stripe_webhook_router.router)
 
