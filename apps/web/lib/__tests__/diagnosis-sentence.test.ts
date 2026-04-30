@@ -24,6 +24,7 @@ function makeProblem(overrides: Partial<ProblemObservation> = {}): ProblemObserv
     error_category_slug: null,
     error_description: null,
     solution_steps: null,
+    review: null,
     ...overrides,
   };
 }

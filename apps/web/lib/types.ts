@@ -65,6 +65,7 @@ export interface ProblemObservation {
   error_category_slug: string | null;
   error_description: string | null;
   solution_steps: string | null;
+  review: DiagnosticReview | null;
 }
 
 export interface AssessmentDiagnosis {
@@ -139,4 +140,23 @@ export interface TrialStats {
   assessmentCount: number;
   interventionCount: number;
   weeksOfHistory: number;
+}
+
+export interface DiagnosticReview {
+  id: string;
+  marked_correct: boolean;
+  override_pattern_id: string | null;
+  override_pattern_slug: string | null;
+  override_pattern_name: string | null;
+  note: string | null;
+  reviewed_at: string;
+  reviewed_by_name: string;
+}
+
+export interface ErrorPattern {
+  id: string;
+  slug: string;
+  name: string;
+  category_slug: string;
+  category_name: string;
 }
