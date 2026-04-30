@@ -3,7 +3,6 @@ import {
   buildTopSentence,
   firstName,
   groupProblemsByPattern,
-  type PatternGroup,
 } from "@/lib/diagnosis-sentence";
 import type {
   AssessmentDiagnosis,
