@@ -17,6 +17,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth.dependencies import get_current_user
@@ -224,7 +225,14 @@ async def create_diagnostic_review(
         reviewed_at=datetime.now(UTC).replace(tzinfo=None),
     )
     db.add(review)
-    await db.flush()
+    try:
+        async with db.begin_nested():
+            await db.flush()
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A review already exists for this problem",
+        ) from None
 
     ctx = _build_ctx_nopii(user, "diagnostic_review.create")
     await write_audit_log(

@@ -507,30 +507,40 @@ async def get_assessment_detail(
             for pat, cat_slug, cat_name in pat_result.all():
                 pattern_index[pat.id] = _PatternAdapter(pat, cat_slug, cat_name)
 
+        # Batch-load all reviewer User rows in a single IN query (avoids N+1).
+        reviewer_ids = {r.reviewed_by for r in review_rows}
+        reviewer_index: dict[UUID, User] = {}
+        if reviewer_ids:
+            reviewer_rows_result = await db.execute(
+                select(User).where(User.id.in_(reviewer_ids))
+            )
+            reviewer_index = {u.id: u for u in reviewer_rows_result.scalars().all()}
+
         # Build reviewer-name-enriched adapter rows (matches _ReviewRow protocol).
         class _ReviewAdapter:
-            def __init__(self, row: DiagnosticReview, reviewer_name: str) -> None:
+            def __init__(self, row: DiagnosticReview) -> None:
                 self.id = row.id
                 self.problem_number = row.problem_number
                 self.marked_correct = row.marked_correct
                 self.override_pattern_id = row.override_pattern_id
                 self.note = row.note
                 self.reviewed_at = row.reviewed_at
-                self.reviewer_name = reviewer_name
+                # reviewed_by_name carries teacher PII. By the strict org-match write
+                # predicate enforced in the diagnostic_reviews router, reviews can only
+                # be created by teachers whose organization_id matches the assessment's.
+                # Combined with the assessment-detail GET's existing auth scoping, this
+                # means reviewer_name only reaches a caller who shares the reviewer's
+                # org. If a future flow allows cross-org review writes, revisit this
+                # exposure point.
+                reviewer = reviewer_index.get(row.reviewed_by)
+                if reviewer:
+                    first = reviewer.first_name or ""
+                    last = reviewer.last_name or ""
+                    self.reviewer_name = f"{first} {last}".strip() or reviewer.email
+                else:
+                    self.reviewer_name = ""
 
-        adapters = []
-        for r in review_rows:
-            reviewer_result = await db.execute(
-                select(User).where(User.id == r.reviewed_by)
-            )
-            reviewer = reviewer_result.scalar_one_or_none()
-            if reviewer is not None:
-                first = reviewer.first_name or ""
-                last = reviewer.last_name or ""
-                name = f"{first} {last}".strip() or reviewer.email
-            else:
-                name = ""
-            adapters.append(_ReviewAdapter(r, name))
+        adapters = [_ReviewAdapter(r) for r in review_rows]
 
         overlaid_problems = apply_reviews_to_problems(
             OverlayInputs(
