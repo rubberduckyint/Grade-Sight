@@ -5,6 +5,7 @@ import { DiagnosisHeader } from "@/components/diagnosis/diagnosis-header";
 import { PatternGroup } from "@/components/diagnosis/pattern-group";
 import { ProblemGrid } from "@/components/diagnosis/problem-grid";
 import { ProcessingCard } from "@/components/diagnosis/processing-card";
+import { ReviewedSection } from "@/components/diagnosis/reviewed-section";
 import { TopSentence } from "@/components/diagnosis/top-sentence";
 import { PageContainer } from "@/components/page-container";
 import { RunDiagnosticButton } from "@/components/run-diagnostic-button";
@@ -14,7 +15,8 @@ import {
   groupProblemsByPattern,
   type Role,
 } from "@/lib/diagnosis-sentence";
-import { fetchAssessmentDetail, fetchMe } from "@/lib/api";
+import { fetchAssessmentDetail, fetchErrorPatterns, fetchMe } from "@/lib/api";
+import type { ErrorPattern } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -22,9 +24,10 @@ interface PageProps {
 
 export default async function AssessmentDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const [user, detail] = await Promise.all([
+  const [user, detail, errorPatterns] = await Promise.all([
     fetchMe(),
     fetchAssessmentDetail(id),
+    fetchErrorPatterns(),
   ]);
   if (!user) redirect("/sign-in");
   if (!detail) notFound();
@@ -79,7 +82,7 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
         ) : null}
 
         {detail.status === "completed" && detail.diagnosis ? (
-          <CompletedBody detail={detail} role={role} />
+          <CompletedBody detail={detail} role={role} errorPatterns={errorPatterns} />
         ) : null}
 
         <PagesReel detail={detail} />
@@ -91,9 +94,11 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
 function CompletedBody({
   detail,
   role,
+  errorPatterns,
 }: {
   detail: NonNullable<Awaited<ReturnType<typeof fetchAssessmentDetail>>>;
   role: Role;
+  errorPatterns: ErrorPattern[];
 }) {
   if (!detail.diagnosis) return null;
 
@@ -117,10 +122,20 @@ function CompletedBody({
               group={g}
               totalWrong={totalWrong}
               emphasis={i === 0 ? "primary" : "secondary"}
+              assessmentId={detail.id}
+              role={role}
+              errorPatterns={errorPatterns}
             />
           ))}
         </div>
       ) : null}
+
+      <ReviewedSection
+        problems={detail.diagnosis.problems}
+        assessmentId={detail.id}
+        role={role}
+        errorPatterns={errorPatterns}
+      />
 
       <ProblemGrid problems={detail.diagnosis.problems} />
     </div>
