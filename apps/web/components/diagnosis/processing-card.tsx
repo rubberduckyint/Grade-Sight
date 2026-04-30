@@ -46,10 +46,10 @@ export function ProcessingCard({
             Reading the quiz
           </p>
           <h2 className="font-serif text-3xl font-normal text-ink leading-tight tracking-[-0.014em] mt-4 max-w-[34ch]">
-            We're working through {first}'s paper. Usually about thirty seconds.
+            We’re working through {first}’s paper. Usually about thirty seconds.
           </h2>
           <p className="font-serif text-lg font-light text-ink-soft leading-[1.55] mt-4 max-w-[40ch]">
-            You can close this page. We'll save the result to {first} when it's
+            You can close this page. We’ll save the result to {first} when it’s
             ready, and you can come back any time.
           </p>
 
