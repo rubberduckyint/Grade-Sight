@@ -1,35 +1,20 @@
 import { notFound, redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
-import { DeleteAssessmentButton } from "@/components/delete-assessment-button";
-import { DiagnosisDisplay } from "@/components/diagnosis-display";
+import { DiagnosisHeader } from "@/components/diagnosis/diagnosis-header";
+import { PatternGroup } from "@/components/diagnosis/pattern-group";
+import { ProblemGrid } from "@/components/diagnosis/problem-grid";
+import { ProcessingCard } from "@/components/diagnosis/processing-card";
+import { TopSentence } from "@/components/diagnosis/top-sentence";
 import { PageContainer } from "@/components/page-container";
 import { RunDiagnosticButton } from "@/components/run-diagnostic-button";
-import { SectionEyebrow } from "@/components/section-eyebrow";
 import { SerifHeadline } from "@/components/serif-headline";
-import { Badge } from "@/components/ui/badge";
+import {
+  buildTopSentence,
+  groupProblemsByPattern,
+  type Role,
+} from "@/lib/diagnosis-sentence";
 import { fetchAssessmentDetail, fetchMe } from "@/lib/api";
-import type { AssessmentStatus } from "@/lib/types";
-
-const STATUS_LABEL: Record<AssessmentStatus, string> = {
-  pending: "Pending",
-  processing: "Processing",
-  completed: "Completed",
-  failed: "Failed",
-};
-
-function timeAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const now = Date.now();
-  const seconds = Math.floor((now - then) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -44,54 +29,25 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
   if (!user) redirect("/sign-in");
   if (!detail) notFound();
 
+  const role: Role = user.organization?.id ? "teacher" : "parent";
+
   return (
     <AppShell
       orgName={user.organization?.name}
       userId={user.id}
       organizationId={user.organization?.id ?? null}
     >
-      <PageContainer className="max-w-[800px]">
-        <SectionEyebrow>Assessment</SectionEyebrow>
-        <div className="mt-4 mb-2 flex items-baseline justify-between">
-          <SerifHeadline level="page" as="h1">
-            {detail.student_name}
-          </SerifHeadline>
-          <DeleteAssessmentButton id={detail.id} redirectTo="/dashboard" />
-        </div>
-        <div className="mb-10 flex flex-wrap items-center gap-x-2 font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
-          <span>Uploaded {timeAgo(detail.uploaded_at)}</span>
-          <span aria-hidden="true">·</span>
-          <Badge
-            variant="secondary"
-            className="font-mono uppercase tracking-[0.12em]"
-          >
-            {STATUS_LABEL[detail.status]}
-          </Badge>
-          <span aria-hidden="true">·</span>
-          <span>
-            {detail.pages.length}{" "}
-            {detail.pages.length === 1 ? "page" : "pages"}
-          </span>
-          {detail.diagnosis && (
-            <>
-              <span aria-hidden="true">·</span>
-              <ModeBadge
-                mode={detail.diagnosis.analysis_mode}
-                answerKey={detail.answer_key}
-              />
-            </>
-          )}
-        </div>
+      <PageContainer className="max-w-[1100px]">
+        <DiagnosisHeader detail={detail} role={role} />
 
-        {/* Diagnostic section */}
-        {detail.status === "pending" && (
+        {detail.status === "pending" ? (
           <div className="my-12 rounded-[var(--radius-sm)] border border-rule bg-paper-soft p-8 text-center">
             <SerifHeadline level="section" as="h2">
               Run diagnostic
             </SerifHeadline>
             <p className="mt-2 text-base text-ink-soft">
-              Grade-Sight will analyze each problem on this assessment,
-              identify error patterns, and provide step-by-step solutions.
+              Grade-Sight will analyze each problem on this assessment, identify
+              error patterns, and provide step-by-step solutions.
             </p>
             <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
               Takes about 30 seconds
@@ -100,80 +56,113 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
               <RunDiagnosticButton id={detail.id} />
             </div>
           </div>
-        )}
-        {detail.status === "processing" && (
-          <div className="my-12 rounded-[var(--radius-sm)] border border-rule bg-paper-soft p-8 text-center">
-            <p className="font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
-              Analyzing — about 30 seconds…
-            </p>
-          </div>
-        )}
-        {detail.status === "completed" && detail.diagnosis && (
-          <DiagnosisDisplay diagnosis={detail.diagnosis} />
-        )}
-        {detail.status === "failed" && (
+        ) : null}
+
+        {detail.status === "processing" ? (
+          <ProcessingCard
+            studentName={detail.student_name}
+            pages={detail.pages}
+            uploadedAt={detail.uploaded_at}
+            mode={detail.diagnosis?.analysis_mode ?? "auto_grade"}
+          />
+        ) : null}
+
+        {detail.status === "failed" ? (
           <div className="my-12 rounded-[var(--radius-sm)] border border-mark bg-paper-soft p-8 text-center">
             <p className="text-base text-mark">
               Something went wrong analyzing this assessment.
             </p>
             <div className="mt-4 flex justify-center">
-              <RunDiagnosticButton id={detail.id} />
+              <RunDiagnosticButton id={detail.id} variant="rerun" />
             </div>
           </div>
-        )}
+        ) : null}
 
-        <ul className="space-y-6">
-          {detail.pages.map((p) => (
-            <li
-              key={p.page_number}
-              className="rounded-[var(--radius-sm)] border border-rule bg-paper p-4"
-            >
-              <p className="mb-2 font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
-                Page {p.page_number} · {p.original_filename}
-              </p>
-              <a
-                href={p.view_url}
-                target="_blank"
-                rel="noreferrer"
-                className="block"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- presigned R2 URL, not optimizable */}
-                <img
-                  src={p.view_url}
-                  alt={`Page ${p.page_number}: ${p.original_filename}`}
-                  className="w-full rounded-[var(--radius-sm)] border border-rule-soft"
-                />
-              </a>
-            </li>
-          ))}
-        </ul>
+        {detail.status === "completed" && detail.diagnosis ? (
+          <CompletedBody detail={detail} role={role} />
+        ) : null}
+
+        <PagesReel detail={detail} />
       </PageContainer>
     </AppShell>
   );
 }
 
-function ModeBadge({
-  mode,
-  answerKey,
+function CompletedBody({
+  detail,
+  role,
 }: {
-  mode: "auto_grade" | "with_key" | "already_graded";
-  answerKey: { id: string; name: string; page_count: number } | null;
+  detail: NonNullable<Awaited<ReturnType<typeof fetchAssessmentDetail>>>;
+  role: Role;
 }) {
-  const label =
-    mode === "auto_grade"
-      ? "Auto-graded"
-      : mode === "already_graded"
-        ? "Reading teacher markings"
-        : answerKey
-          ? `Graded with ${answerKey.name}`
-          : "Graded with answer key";
+  if (!detail.diagnosis) return null;
+
+  const sentence = buildTopSentence(detail.diagnosis, role);
+  const groups = groupProblemsByPattern(detail.diagnosis.problems);
+  const totalWrong = detail.diagnosis.problems.filter((p) => !p.is_correct).length;
 
   return (
-    <Badge
-      variant="secondary"
-      className="font-mono uppercase tracking-[0.12em]"
-    >
-      {label}
-    </Badge>
+    <div className="my-12 flex flex-col gap-12">
+      <TopSentence
+        studentName={detail.student_name}
+        sentence={sentence}
+        role={role}
+      />
+
+      {groups.length > 0 ? (
+        <div className="flex flex-col gap-6">
+          {groups.map((g, i) => (
+            <PatternGroup
+              key={g.slug ?? "other"}
+              group={g}
+              totalWrong={totalWrong}
+              emphasis={i === 0 ? "primary" : "secondary"}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      <ProblemGrid problems={detail.diagnosis.problems} />
+    </div>
+  );
+}
+
+function PagesReel({
+  detail,
+}: {
+  detail: NonNullable<Awaited<ReturnType<typeof fetchAssessmentDetail>>>;
+}) {
+  if (detail.pages.length === 0) return null;
+  return (
+    <section aria-label="Pages">
+      <p className="font-mono text-xs uppercase tracking-[0.14em] text-ink-mute">
+        Pages &middot; {detail.pages.length} photographed
+      </p>
+      <ul className="mt-5 space-y-6">
+        {detail.pages.map((p) => (
+          <li
+            key={p.page_number}
+            className="rounded-[var(--radius-sm)] border border-rule bg-paper p-4"
+          >
+            <p className="mb-2 font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
+              Page {p.page_number} &middot; {p.original_filename}
+            </p>
+            <a
+              href={p.view_url}
+              target="_blank"
+              rel="noreferrer"
+              className="block"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- presigned R2 URL, not optimizable */}
+              <img
+                src={p.view_url}
+                alt={`Page ${p.page_number}: ${p.original_filename}`}
+                className="w-full rounded-[var(--radius-sm)] border border-rule-soft"
+              />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
