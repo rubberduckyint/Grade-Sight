@@ -99,7 +99,7 @@ function CompletedBody({
 
   const sentence = buildTopSentence(detail.diagnosis, role);
   const groups = groupProblemsByPattern(detail.diagnosis.problems);
-  const totalWrong = groups.reduce((acc, g) => acc + g.problems.length, 0);
+  const totalWrong = detail.diagnosis.problems.filter((p) => !p.is_correct).length;
 
   return (
     <div className="my-12 flex flex-col gap-12">
@@ -134,7 +134,7 @@ function PagesReel({
 }) {
   if (detail.pages.length === 0) return null;
   return (
-    <section>
+    <section aria-label="Pages">
       <p className="font-mono text-xs uppercase tracking-[0.14em] text-ink-mute">
         Pages &middot; {detail.pages.length} photographed
       </p>
