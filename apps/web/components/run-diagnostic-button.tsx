@@ -8,9 +8,15 @@ import { runDiagnostic } from "@/lib/actions";
 
 export interface RunDiagnosticButtonProps {
   id: string;
+  variant?: "initial" | "rerun";
+  size?: "default" | "lg";
 }
 
-export function RunDiagnosticButton({ id }: RunDiagnosticButtonProps) {
+export function RunDiagnosticButton({
+  id,
+  variant = "initial",
+  size = "lg",
+}: RunDiagnosticButtonProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -27,15 +33,19 @@ export function RunDiagnosticButton({ id }: RunDiagnosticButtonProps) {
     });
   }
 
+  const idleLabel = variant === "rerun" ? "Re-run" : "Run diagnostic";
+  const pendingLabel =
+    variant === "rerun" ? "Re-running — about 30 seconds…" : "Diagnosing — about 30 seconds…";
+
   return (
     <div>
       <Button
         type="button"
-        size="lg"
+        size={size}
         onClick={handleClick}
         disabled={isPending}
       >
-        {isPending ? "Diagnosing — about 30 seconds…" : "Run diagnostic"}
+        {isPending ? pendingLabel : idleLabel}
       </Button>
       {error && (
         <p className="mt-3 font-mono text-xs uppercase tracking-[0.12em] text-mark">

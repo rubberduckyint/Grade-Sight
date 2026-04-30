@@ -51,7 +51,11 @@ export function DiagnosisHeader({
         </div>
         <div className="flex gap-3 shrink-0">
           {(detail.status === "pending" || detail.status === "failed" || detail.status === "completed") ? (
-            <RunDiagnosticButton id={detail.id} />
+            <RunDiagnosticButton
+              id={detail.id}
+              size="default"
+              variant={detail.status === "pending" ? "initial" : "rerun"}
+            />
           ) : null}
           <DeleteAssessmentButton id={detail.id} redirectTo="/dashboard" />
         </div>

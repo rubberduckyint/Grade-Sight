@@ -73,7 +73,7 @@ export default async function AssessmentDetailPage({ params }: PageProps) {
               Something went wrong analyzing this assessment.
             </p>
             <div className="mt-4 flex justify-center">
-              <RunDiagnosticButton id={detail.id} />
+              <RunDiagnosticButton id={detail.id} variant="rerun" />
             </div>
           </div>
         ) : null}
