@@ -40,19 +40,23 @@ export function PatternPicker({
       disabled={disabled}
     >
       <SelectTrigger
-        className="font-sans text-sm border-rule rounded-[var(--radius-sm)]"
+        className="font-sans text-sm bg-paper border-rule rounded-[var(--radius-sm)] text-ink"
         aria-label="Select error pattern"
       >
         <SelectValue placeholder={disabled ? "Marked correct — no pattern" : "Choose a pattern…"} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="bg-paper border-rule text-ink shadow-[0_4px_12px_oklch(0.22_0.015_75/0.12)]">
         {Array.from(grouped.entries()).map(([slug, group]) => (
           <SelectGroup key={slug}>
             <SelectLabel className="font-mono text-xs uppercase tracking-[0.14em] text-ink-mute">
               {group.categoryName}
             </SelectLabel>
             {group.items.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
+              <SelectItem
+                key={p.id}
+                value={p.id}
+                className="font-sans text-sm text-ink focus:bg-paper-soft focus:text-ink"
+              >
                 {p.name}
               </SelectItem>
             ))}
