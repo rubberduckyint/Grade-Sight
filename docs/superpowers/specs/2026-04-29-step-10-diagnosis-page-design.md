@@ -54,7 +54,7 @@ Role (`"parent" | "teacher"`) is derived in `page.tsx` from `user.organization?.
 | `apps/web/components/diagnosis/mode-badge.tsx` | new | Three labels: `AUTO-GRADED` / `GRADED WITH KEY` / `READING THE TEACHER'S MARKS`. Uppercase mono, `tracking-[0.14em]`, `text-ink-mute`. Replaces the inline `ModeBadge` in current `page.tsx`. |
 | `apps/web/components/diagnosis/top-sentence.tsx` | new | Renders `TopSentence` (see §Sentence builder). Boxed: `border-l-[3px] border-accent`, `bg-paper-soft`, `border border-rule-soft`. Mono accent eyebrow above ("WHAT THIS QUIZ TELLS US" parent / "WHAT YOU'RE LOOKING AT" teacher). Score bold; accent phrase `text-accent`. |
 | `apps/web/components/diagnosis/pattern-group.tsx` | new | Card with header (eyebrow + serif name + serif description + count) and ordered list of `<ProblemRow>`s. Header sits on `bg-paper-soft` for the first/recurring group; subsequent groups use `bg-paper`. |
-| `apps/web/components/diagnosis/problem-row.tsx` | new | 3-column grid: `#N` index · prompt (serif) · `<HandwrittenWork>` · correct answer (serif) · Steps expand. Uses native `<details>/<summary>` for the expand. |
+| `apps/web/components/diagnosis/problem-row.tsx` | new | Grid row + an optional `<details>` Steps expand below. The grid has 4 columns: `#N` index · `<HandwrittenWork>` of `student_answer` · `correct_answer` (serif) · `error_description` line ("↑ Sign on −3 lost"). The canvas's "PROBLEM" column (the actual prompt text) is omitted — see §Out of scope. The Steps `<summary>` lives below the grid as a standalone link, expanding `<PrintedSolution>` inline. |
 | `apps/web/components/diagnosis/handwritten-work.tsx` | new | Caveat font, line-broken student work, `text-ink-soft`. Used **only** here per handoff doc. |
 | `apps/web/components/diagnosis/printed-solution.tsx` | new | Serif numbered steps. Inside the Steps expand. Parses `solution_steps` (newline-split, trims blanks). |
 | `apps/web/components/diagnosis/problem-grid.tsx` | new | Bottom "Everything else" grid. ✓ for correct, ✗ for wrong; wrong squares get `border-insight` + `bg-[oklch(0.97_0.04_72)]`. Each square is an `<a href="#problem-N">` so keyboard users can jump to the matching `<ProblemRow>` (which renders `id="problem-N"`). |
@@ -266,6 +266,7 @@ Per handoff §A11y:
 | Live polling on processing status | not now; reconsider after Step 11 lifts client state |
 | Engine-side structured `top_sentence` output | not now; client-side sentence builder is sufficient |
 | Synthesizing an assessment topic title | requires schema change; skip |
+| Problem prompt text in `<ProblemRow>` | requires engine extension to emit `problem_text` per problem (vision model would need to read and return the prompt). Step 10 ships without the prompt column; the canvas's "PROBLEM" column is mocked data. Future follow-up — flag a backend issue when prioritized. |
 
 ## Seven-item checklist (handoff doc)
 
@@ -275,7 +276,7 @@ Per handoff §A11y:
 4. **Amber only at insight moments. Red only on `/error` ERR-XXX** — pass. Insight amber on pattern-group eyebrow accent, problem-grid wrong squares, and the "↑ {mistake hint}" caption under handwritten work. No red anywhere; existing failure card uses `border-mark`.
 5. **Body text is 18px. Nothing below 15px** — pass for body. Mono eyebrows `text-xs` (12px) — same allowance taken in Step 09 spec for the eyebrow pattern.
 6. **Serif = meaning, sans = doing** — pass. Headline, top sentence, pattern names, "what it should be," and Steps expand are serif. Mode badge, eyebrows, breadcrumb, action-bar buttons, metadata strip are sans/mono. Caveat is reserved for `<HandwrittenWork>`.
-7. **Matches reference canvas** — pass. Mapped to `docs/design/Grade Sight Diagnosis v2.html` (DiagnosisParent, DiagnosisTeacher, ProcessingState mockups). Three deliberate departures, all called out in §Out of scope: no inline-correction panel, no class-context lines, action bar reduced to Re-run + Delete.
+7. **Matches reference canvas** — pass. Mapped to `docs/design/Grade Sight Diagnosis v2.html` (DiagnosisParent, DiagnosisTeacher, ProcessingState mockups). Four deliberate departures, all called out in §Out of scope: no inline-correction panel, no class-context lines, action bar reduced to Re-run + Delete, and no "PROBLEM" prompt column in `<ProblemRow>` (engine doesn't emit problem text yet).
 
 ## Locked decisions
 
