@@ -14,6 +14,8 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
+import pytest
+
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -721,6 +723,101 @@ async def test_create_assessment_stores_answer_key_id_and_flags(
     assert a.answer_key_id == key.id
     assert a.already_graded is True
     assert a.review_all is False
+
+
+@pytest.mark.db
+async def test_get_assessment_applies_review_overlay(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    """A mark-correct review on an assessment flows through GET as effective is_correct=True + populated review sub-object."""
+    from decimal import Decimal
+
+    from grade_sight_api.models.assessment_diagnosis import AssessmentDiagnosis
+    from grade_sight_api.models.diagnostic_review import DiagnosticReview
+    from grade_sight_api.models.problem_observation import ProblemObservation
+
+    user = await _seed_user(async_session)
+    student = await _seed_student(async_session, user, name="Ada")
+    asmt = Assessment(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        uploaded_by_user_id=user.id,
+        status=AssessmentStatus.completed,
+    )
+    async_session.add(asmt)
+    await async_session.flush()
+    async_session.add(
+        AssessmentPage(
+            assessment_id=asmt.id,
+            page_number=1,
+            s3_url=f"k/{asmt.id}/page-001.png",
+            original_filename="p1.png",
+            content_type="image/png",
+            organization_id=user.organization_id,
+        )
+    )
+    diag = AssessmentDiagnosis(
+        assessment_id=asmt.id,
+        organization_id=user.organization_id,
+        model="claude-sonnet-4-6",
+        prompt_version="v1",
+        tokens_input=100,
+        tokens_output=20,
+        cost_usd=Decimal("0.0123"),
+        latency_ms=12345,
+        overall_summary="Test summary.",
+    )
+    async_session.add(diag)
+    await async_session.flush()
+    async_session.add(
+        ProblemObservation(
+            diagnosis_id=diag.id,
+            organization_id=user.organization_id,
+            problem_number=1,
+            page_number=1,
+            student_answer="2x",
+            correct_answer="x + 2",
+            is_correct=False,
+        )
+    )
+    await async_session.flush()
+
+    # Create a mark-correct review for problem 1.
+    from datetime import UTC, datetime
+    review = DiagnosticReview(
+        assessment_id=asmt.id,
+        problem_number=1,
+        marked_correct=True,
+        reviewed_by=user.id,
+        reviewed_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+    async_session.add(review)
+    await async_session.flush()
+
+    _override_deps(user, async_session)
+    fake_get_url = "https://r2.example/get?sig=overlay"
+    try:
+        with patch(
+            "grade_sight_api.routers.assessments.storage_service.get_download_url",
+            new=AsyncMock(return_value=fake_get_url),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    f"/api/assessments/{asmt.id}",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    problems = body["diagnosis"]["problems"]
+    assert len(problems) == 1
+    assert problems[0]["is_correct"] is True  # effective state from mark-correct
+    assert problems[0]["review"] is not None
+    assert problems[0]["review"]["marked_correct"] is True
 
 
 async def test_create_assessment_rejects_cross_org_answer_key(

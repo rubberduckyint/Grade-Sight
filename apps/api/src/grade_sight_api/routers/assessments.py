@@ -33,6 +33,7 @@ from ..models.answer_key_page import AnswerKeyPage
 from ..models.assessment import Assessment, AssessmentStatus
 from ..models.assessment_diagnosis import AssessmentDiagnosis
 from ..models.assessment_page import AssessmentPage
+from ..models.diagnostic_review import DiagnosticReview
 from ..models.error_category import ErrorCategory
 from ..models.error_pattern import ErrorPattern
 from ..models.error_subcategory import ErrorSubcategory
@@ -53,6 +54,7 @@ from ..schemas.assessments import (
 )
 from ..services import engine_service, storage_service
 from ..services.call_context import CallContext
+from ..services.diagnostic_review_service import OverlayInputs, apply_reviews_to_problems
 
 MAX_PAGES_PER_ASSESSMENT = 20
 
@@ -446,6 +448,110 @@ async def get_assessment_detail(
     diagnosis_id = diag_result.scalar_one_or_none()
     if diagnosis_id is not None:
         diagnosis_payload = await _build_diagnosis_response(db, diagnosis_id)
+
+    # Overlay active teacher reviews onto problems so callers always see
+    # effective (post-review) state. Problems with no review are passed through
+    # unchanged (review=None). Only runs when a diagnosis with problems exists.
+    if diagnosis_payload is not None and diagnosis_payload.problems:
+        reviews_result = await db.execute(
+            select(DiagnosticReview).where(
+                DiagnosticReview.assessment_id == assessment.id,
+                DiagnosticReview.deleted_at.is_(None),
+            )
+        )
+        review_rows = list(reviews_result.scalars().all())
+
+        # Collect unique pattern IDs referenced by override reviews.
+        pattern_ids = {
+            r.override_pattern_id
+            for r in review_rows
+            if r.override_pattern_id is not None
+        }
+
+        # Build pattern_index: UUID -> protocol-compatible object with
+        # category_slug + category_name resolved via JOIN.
+        pattern_index: dict[object, object] = {}
+        if pattern_ids:
+            pat_result = await db.execute(
+                select(
+                    ErrorPattern,
+                    ErrorCategory.slug.label("cat_slug"),
+                    ErrorCategory.name.label("cat_name"),
+                )
+                .join(
+                    ErrorSubcategory,
+                    ErrorPattern.subcategory_id == ErrorSubcategory.id,
+                    isouter=True,
+                )
+                .join(
+                    ErrorCategory,
+                    ErrorSubcategory.category_id == ErrorCategory.id,
+                    isouter=True,
+                )
+                .where(ErrorPattern.id.in_(pattern_ids))
+            )
+
+            class _PatternAdapter:
+                def __init__(
+                    self,
+                    pattern: ErrorPattern,
+                    cat_slug: str | None,
+                    cat_name: str | None,
+                ) -> None:
+                    self.id = pattern.id
+                    self.slug = pattern.slug
+                    self.name = pattern.name
+                    self.category_slug = cat_slug or ""
+                    self.category_name = cat_name or ""
+
+            for pat, cat_slug, cat_name in pat_result.all():
+                pattern_index[pat.id] = _PatternAdapter(pat, cat_slug, cat_name)
+
+        # Batch-load all reviewer User rows in a single IN query (avoids N+1).
+        reviewer_ids = {r.reviewed_by for r in review_rows}
+        reviewer_index: dict[UUID, User] = {}
+        if reviewer_ids:
+            reviewer_rows_result = await db.execute(
+                select(User).where(User.id.in_(reviewer_ids))
+            )
+            reviewer_index = {u.id: u for u in reviewer_rows_result.scalars().all()}
+
+        # Build reviewer-name-enriched adapter rows (matches _ReviewRow protocol).
+        class _ReviewAdapter:
+            def __init__(self, row: DiagnosticReview) -> None:
+                self.id = row.id
+                self.problem_number = row.problem_number
+                self.marked_correct = row.marked_correct
+                self.override_pattern_id = row.override_pattern_id
+                self.note = row.note
+                self.reviewed_at = row.reviewed_at
+                # reviewed_by_name carries teacher PII. By the strict org-match write
+                # predicate enforced in the diagnostic_reviews router, reviews can only
+                # be created by teachers whose organization_id matches the assessment's.
+                # Combined with the assessment-detail GET's existing auth scoping, this
+                # means reviewer_name only reaches a caller who shares the reviewer's
+                # org. If a future flow allows cross-org review writes, revisit this
+                # exposure point.
+                reviewer = reviewer_index.get(row.reviewed_by)
+                if reviewer:
+                    first = reviewer.first_name or ""
+                    last = reviewer.last_name or ""
+                    self.reviewer_name = f"{first} {last}".strip() or reviewer.email
+                else:
+                    self.reviewer_name = ""
+
+        adapters = [_ReviewAdapter(r) for r in review_rows]
+
+        overlaid_problems = apply_reviews_to_problems(
+            OverlayInputs(
+                problems=diagnosis_payload.problems,
+                reviews=adapters,  # type: ignore[arg-type]
+                pattern_index=pattern_index,  # type: ignore[arg-type]
+            )
+        )
+        diagnosis_payload = diagnosis_payload.model_copy(
+            update={"problems": overlaid_problems}
+        )
 
     # AnswerKey.deleted_at is intentionally NOT filtered here: per Spec 12,
     # existing assessments that reference a soft-deleted key still display it

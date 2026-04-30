@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from ..models.assessment import AssessmentStatus
+from grade_sight_api.schemas.diagnostic_reviews import DiagnosticReviewOut
 
 
 class AssessmentFile(BaseModel):
@@ -67,6 +68,7 @@ class ProblemObservationResponse(BaseModel):
     error_category_slug: str | None
     error_description: str | None
     solution_steps: str | None
+    review: DiagnosticReviewOut | None = None
 
 
 class AssessmentDiagnosisResponse(BaseModel):

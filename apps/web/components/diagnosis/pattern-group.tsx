@@ -1,14 +1,22 @@
 import { ProblemRow } from "@/components/diagnosis/problem-row";
+import type { Role } from "@/lib/diagnosis-sentence";
 import type { PatternGroup as PatternGroupShape } from "@/lib/diagnosis-sentence";
+import type { ErrorPattern } from "@/lib/types";
 
 export function PatternGroup({
   group,
   totalWrong,
   emphasis,
+  assessmentId,
+  role,
+  errorPatterns,
 }: {
   group: PatternGroupShape;
   totalWrong: number;
   emphasis: "primary" | "secondary";
+  assessmentId: string;
+  role: Role;
+  errorPatterns: ErrorPattern[];
 }) {
   const isOther = group.slug === null;
   const count = group.problems.length;
@@ -54,7 +62,13 @@ export function PatternGroup({
       </header>
       <div>
         {group.problems.map((p) => (
-          <ProblemRow key={p.id} problem={p} />
+          <ProblemRow
+            key={p.id}
+            problem={p}
+            assessmentId={assessmentId}
+            role={role}
+            errorPatterns={errorPatterns}
+          />
         ))}
       </div>
     </section>

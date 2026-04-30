@@ -10,7 +10,9 @@ export type {
   AssessmentListItem,
   AssessmentStatus,
   AssessmentUploadIntent,
+  DiagnosticReview,
   EntitlementResponse,
+  ErrorPattern,
   PriceInfo,
   PricesResponse,
   Student,
@@ -22,6 +24,7 @@ import type {
   AssessmentDetail,
   AssessmentListItem,
   EntitlementResponse,
+  ErrorPattern,
   PricesResponse,
   Student,
   TrialStats,
@@ -146,4 +149,21 @@ export async function fetchAnswerKeys(): Promise<AnswerKey[]> {
   if (!response.ok) throw new Error(`GET /api/answer-keys failed: ${response.status}`);
   const body = (await response.json()) as { answer_keys: AnswerKey[] };
   return body.answer_keys;
+}
+
+// ---- Error patterns ----
+
+export async function fetchErrorPatterns(): Promise<ErrorPattern[]> {
+  const { getToken } = await auth();
+  const token = await getToken();
+  if (!token) return [];
+
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/error-patterns`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`GET /api/error-patterns failed: ${response.status}`);
+  }
+  return (await response.json()) as ErrorPattern[];
 }
