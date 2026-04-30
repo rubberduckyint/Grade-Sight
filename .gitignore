@@ -41,5 +41,8 @@ venv/
 # Turborepo
 .turbo/
 
+# Superpowers brainstorm session artifacts
+.superpowers/
+
 # TypeScript incremental build cache
 *.tsbuildinfo
