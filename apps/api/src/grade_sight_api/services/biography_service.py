@@ -116,7 +116,7 @@ def classify_trend(week_counts: list[int]) -> Trend:
         return "recurring"
 
     early_threshold = max(1, n // 3)
-    if first_nonzero != -1 and first_nonzero < early_threshold and all(c == 0 for c in recent_window):
+    if first_nonzero != -1 and first_nonzero <= early_threshold and all(c == 0 for c in recent_window):
         return "fading"
 
     return "recurring"
@@ -337,17 +337,11 @@ async def build_biography(
             sentence=sentence,
         )
 
-    # Build a map from assessment_id -> diagnosis_id for assessments that have one
     diagnosis_ids = [
         asmt.diagnosis.id
         for asmt in assessments
         if asmt.diagnosis is not None
     ]
-    asmt_id_to_diagnosis_id: dict[UUID, UUID] = {
-        asmt.id: asmt.diagnosis.id
-        for asmt in assessments
-        if asmt.diagnosis is not None
-    }
 
     # Load all ProblemObservations with JOINed pattern/category info in one query.
     # Keyed by diagnosis_id so we can look them up per assessment.

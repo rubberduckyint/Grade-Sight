@@ -329,3 +329,56 @@ async def test_biography_returns_404_when_student_missing(async_session: AsyncSe
             assert response.status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.db
+async def test_biography_returns_404_for_parent_wrong_student(async_session: AsyncSession) -> None:
+    """Parent attempting to access a student they didn't create → 404."""
+    # Parent A creates a student; parent B tries to read it
+    parent_a = User(
+        clerk_id=f"u_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:6]}@a.test",
+        role=UserRole.parent,
+        first_name="A",
+        last_name="Parent",
+        organization_id=None,
+    )
+    parent_b = User(
+        clerk_id=f"u_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:6]}@b.test",
+        role=UserRole.parent,
+        first_name="B",
+        last_name="Parent",
+        organization_id=None,
+    )
+    async_session.add_all([parent_a, parent_b])
+    await async_session.flush()
+
+    student = Student(
+        full_name="Marcus",
+        organization_id=None,
+        created_by_user_id=parent_a.id,
+    )
+    async_session.add(student)
+    await async_session.flush()
+
+    app.dependency_overrides[get_current_user] = lambda: parent_b
+    app.dependency_overrides[get_session] = lambda: async_session
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(f"/api/students/{student.id}/biography")
+            assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.db
+async def test_biography_returns_401_when_unauthenticated(async_session: AsyncSession) -> None:
+    """No auth dependency override → real auth runs → no token → 401."""
+    app.dependency_overrides[get_session] = lambda: async_session
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(f"/api/students/{uuid4()}/biography")
+            assert response.status_code in {401, 403}
+    finally:
+        app.dependency_overrides.clear()

@@ -34,6 +34,13 @@ def test_classify_trend_fading_when_early_only_and_recent_window_empty() -> None
     assert classify_trend([3, 0, 0, 0, 0, 0]) == "fading"
 
 
+def test_classify_trend_fading_at_threshold_index() -> None:
+    """First nonzero at index n//3 (boundary) → fading.
+    Regression test for spec divergence in fading boundary."""
+    # n=6, early_threshold=max(1, 6//3)=2, first_nonzero=2 → <= 2 → fading
+    assert classify_trend([0, 0, 2, 0, 0, 0]) == "fading"
+
+
 def test_classify_trend_new_wins_over_recurring_for_recent_first_appearance() -> None:
     counts = [0, 0, 0, 0, 2, 2]
     assert classify_trend(counts) == "new"
