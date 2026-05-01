@@ -79,6 +79,17 @@ export function DiagnosisHeader({
                 {detail.answer_key.name}
               </Link>
             </span>
+            {role === "teacher" && detail.diagnosis?.analysis_mode === "with_key" ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <Link
+                  href={`/assessments/${detail.id}/viewer`}
+                  className="text-accent hover:underline"
+                >
+                  view side-by-side
+                </Link>
+              </>
+            ) : null}
           </>
         ) : null}
         {showStatusPill ? (

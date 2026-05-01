@@ -6,6 +6,7 @@ import type { UserResponse } from "@grade-sight/shared";
 
 export type {
   AnswerKey,
+  AnswerKeyDetail,
   AssessmentDetail,
   AssessmentListItem,
   AssessmentStatus,
@@ -21,6 +22,7 @@ export type {
 
 import type {
   AnswerKey,
+  AnswerKeyDetail,
   AssessmentDetail,
   AssessmentListItem,
   EntitlementResponse,
@@ -149,6 +151,13 @@ export async function fetchAnswerKeys(): Promise<AnswerKey[]> {
   if (!response.ok) throw new Error(`GET /api/answer-keys failed: ${response.status}`);
   const body = (await response.json()) as { answer_keys: AnswerKey[] };
   return body.answer_keys;
+}
+
+export async function fetchAnswerKeyDetail(id: string): Promise<AnswerKeyDetail | null> {
+  const response = await authedFetch(`/api/answer-keys/${id}`, { method: "GET" });
+  if (response.status === 401 || response.status === 404) return null;
+  if (!response.ok) throw new Error(`GET /api/answer-keys/${id} failed: ${response.status}`);
+  return (await response.json()) as AnswerKeyDetail;
 }
 
 // ---- Error patterns ----
