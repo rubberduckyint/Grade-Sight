@@ -36,6 +36,33 @@ class roster: per-student photo upload → analyze → print intervention
 one `answer_key_id`); missing is the queue-through UX. Probably depends
 on the class flow above.
 
+### Error-pattern glossary + cross-app linking
+
+Surfaced 2026-04-30 after Step 12 shipped. Patterns like "sign drop" or
+"distributive-property error" are named in many places across the app
+(TopSentence accent phrase on `/assessments/[id]`, PatternGroup headers,
+ProblemRow "why" hint, RecentAssessmentsTable primary error column,
+BiographySentence dominant pattern phrase, PatternTimeline row labels).
+Right now those names are bare text — a parent or teacher who doesn't
+recognize a label has no way to learn what it means.
+
+Plan:
+- New route (likely `/glossary` or `/patterns`) that lists every row in
+  the `error_patterns` taxonomy table grouped by `error_subcategory` →
+  `error_category`. Each entry: name, plain-language definition, an
+  example, and what to do about it. Source of truth = the taxonomy table
+  (already loaded at runtime per CLAUDE.md §3 "Taxonomy as data").
+- Anchor IDs per pattern (`/glossary#pattern-{slug}` or by UUID).
+- Wherever a pattern name is rendered, wrap it in a link to its glossary
+  anchor. New shared component (e.g. `<PatternLink patternId={...}>`)
+  to keep the link styling consistent and the slug logic in one place.
+- Decide whether glossary content lives in the DB (extend
+  `error_patterns` with `definition_md`, `example_md`, `intervention_md`)
+  or in flat content files keyed by slug. DB is more consistent with the
+  "taxonomy as data" rule but content files are easier to edit.
+- Brainstorm before scheduling — needs a design pass on glossary IA
+  (categories vs. flat list, search, parent-vs-teacher copy variants).
+
 ## Paywall right-column trial stats — opportunistic
 
 - **Marker:** `apps/web/lib/api.ts:102` (`TODO(step-11)` — historical tag,
