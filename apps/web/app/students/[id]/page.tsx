@@ -25,7 +25,7 @@ export default async function StudentBiographyPage({ params }: PageProps) {
   if (!user) redirect("/sign-in");
   if (!biography) notFound();
 
-  const role: Role = user.organization?.id ? "teacher" : "parent";
+  const role: Role = user.role === "teacher" ? "teacher" : "parent";
   const tabs = user.role === "teacher" ? TEACHER_TABS : PARENT_TABS;
 
   return (
