@@ -5,6 +5,12 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Literal
 
+from grade_sight_api.schemas.biography import (
+    BiographySentence,
+    PatternTimelineRow,
+    WeekBucket,
+)
+
 
 Trend = Literal["recurring", "fading", "new", "one_off"]
 
@@ -90,3 +96,118 @@ def classify_trend(week_counts: list[int]) -> Trend:
         return "fading"
 
     return "recurring"
+
+
+@dataclass
+class PatternMeta:
+    """Meta about an error_pattern (slug + display info)."""
+
+    slug: str
+    name: str
+    category_slug: str
+    category_name: str
+
+
+def _label_for_monday(d: date) -> str:
+    """Format a Monday date as a short month-day label, e.g. 'Mar 17'."""
+    # %-d is non-portable on Windows but project is macOS/Linux only.
+    return d.strftime("%b %-d")
+
+
+def build_pattern_timeline(
+    bucketed: dict[str, list[int]],
+    pattern_meta: dict[str, PatternMeta],
+    weeks: list[date],
+) -> list[PatternTimelineRow]:
+    """Convert per-slug week counts into PatternTimelineRow objects.
+
+    Sorted by total_count descending, ties broken by slug alphabetical.
+    Slugs not present in `pattern_meta` are silently dropped (defensive).
+    """
+    rows: list[PatternTimelineRow] = []
+    for slug, counts in bucketed.items():
+        meta = pattern_meta.get(slug)
+        if meta is None:
+            continue
+        total = sum(counts)
+        if total == 0:
+            continue
+        week_buckets = [
+            WeekBucket(
+                week_start=monday,
+                label=_label_for_monday(monday),
+                count=counts[i] if i < len(counts) else 0,
+            )
+            for i, monday in enumerate(weeks)
+        ]
+        rows.append(
+            PatternTimelineRow(
+                slug=slug,
+                name=meta.name,
+                category_slug=meta.category_slug,
+                category_name=meta.category_name,
+                weeks=week_buckets,
+                total_count=total,
+                trend=classify_trend(counts),
+            )
+        )
+
+    rows.sort(key=lambda r: (-r.total_count, r.slug))
+    return rows
+
+
+def build_biography_sentence(
+    timeline: list[PatternTimelineRow],
+    role: Literal["parent", "teacher"],
+    first_name: str,
+    *,
+    n_assessments: int,
+) -> BiographySentence:
+    """Build the editorial sentence per spec §3a."""
+
+    eyebrow = (
+        f"WHY {first_name.upper()} IS ON YOUR LIST"
+        if role == "teacher"
+        else f"WHAT WE'RE SEEING IN {first_name.upper()} THIS MONTH"
+    )
+
+    if not timeline:
+        text = (
+            f"No assessments yet for {first_name}."
+            if n_assessments == 0
+            else f"{first_name} has been clean across the last {n_assessments} assessments."
+        )
+        return BiographySentence(kind="fallback", eyebrow=eyebrow, text=text)
+
+    dominant = timeline[0]  # already sorted by total descending
+
+    if dominant.trend == "recurring":
+        return BiographySentence(
+            kind="structured",
+            eyebrow=eyebrow,
+            lead=f"One pattern keeps coming back: {dominant.name.lower()}.",
+            accent=f"{dominant.total_count} occurrences in the last {n_assessments} assessments.",
+            coda=("That's a five-minute conversation, not a tutor." if role == "parent" else None),
+        )
+
+    if dominant.trend == "new":
+        return BiographySentence(
+            kind="structured",
+            eyebrow=eyebrow,
+            lead=f"{dominant.name} just started showing up.",
+            accent=f"{dominant.total_count} times in the last 2 weeks.",
+        )
+
+    if dominant.trend == "fading":
+        return BiographySentence(
+            kind="structured",
+            eyebrow=eyebrow,
+            lead=f"{first_name} is mostly clean. The misses don't repeat.",
+        )
+
+    # one_off
+    return BiographySentence(
+        kind="structured",
+        eyebrow=eyebrow,
+        lead=f"Only one miss worth flagging: {dominant.name.lower()}.",
+    )
