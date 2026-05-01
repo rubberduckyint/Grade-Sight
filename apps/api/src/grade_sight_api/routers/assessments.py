@@ -17,7 +17,7 @@ All endpoints tenant-scoped via user.organization_id.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Literal, cast
 from uuid import UUID
@@ -50,6 +50,8 @@ from ..schemas.assessments import (
     AssessmentListItem,
     AssessmentListResponse,
     AssessmentPageUploadIntent,
+    HeadlineInputs,
+    HeadlineProblem,
     ProblemObservationResponse,
 )
 from ..services import engine_service, storage_service
@@ -147,13 +149,22 @@ async def _build_diagnosis_response(
 
 @router.get("/api/assessments", response_model=AssessmentListResponse)
 async def list_assessments(
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=50, ge=1, le=100),
+    since: date | None = None,
+    until: date | None = None,
+    cursor: datetime | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> AssessmentListResponse:
-    """List recent assessments + first-page thumbnail URL + page count."""
+    """List recent assessments + first-page thumbnail URL + page count.
+
+    Supports date filters (since / until), cursor pagination, and returns
+    headline_inputs (diagnosis summary + overlay) for completed assessments.
+    """
     if user.organization_id is None:
-        return AssessmentListResponse(assessments=[])
+        return AssessmentListResponse(
+            assessments=[], has_more=False, next_cursor=None
+        )
 
     page_count_subq = (
         select(
@@ -177,7 +188,7 @@ async def list_assessments(
         .subquery()
     )
 
-    result = await db.execute(
+    stmt = (
         select(
             Assessment,
             Student.full_name,
@@ -199,9 +210,173 @@ async def list_assessments(
             Assessment.organization_id == user.organization_id,
             Assessment.deleted_at.is_(None),
         )
-        .order_by(Assessment.uploaded_at.desc())
-        .limit(limit)
     )
+
+    if since is not None:
+        stmt = stmt.where(
+            Assessment.uploaded_at >= datetime.combine(since, datetime.min.time())
+        )
+    if until is not None:
+        stmt = stmt.where(
+            Assessment.uploaded_at
+            < datetime.combine(until + timedelta(days=1), datetime.min.time())
+        )
+    if cursor is not None:
+        stmt = stmt.where(Assessment.uploaded_at < cursor)
+
+    stmt = stmt.order_by(Assessment.uploaded_at.desc()).limit(limit + 1)
+    rows = (await db.execute(stmt)).all()
+
+    has_more = len(rows) > limit
+    if has_more:
+        rows = rows[:limit]
+
+    # --- Batch-fetch diagnosis + observations + reviews for all returned assessments ---
+    assessment_ids = [a.id for a, *_ in rows]
+    diagnoses_by_aid: dict[UUID, AssessmentDiagnosis] = {}
+    # Maps assessment_id -> list of (ProblemObservation, pattern_slug, pattern_name, category_slug)
+    obs_by_aid: dict[UUID, list[tuple[ProblemObservation, str | None, str | None, str | None]]] = {}
+    reviews_by_aid: dict[UUID, list[DiagnosticReview]] = {}
+    pattern_index: dict[UUID, ErrorPattern] = {}
+
+    if assessment_ids:
+        # 1. Diagnoses (keyed by assessment_id)
+        for d in (
+            await db.execute(
+                select(AssessmentDiagnosis).where(
+                    AssessmentDiagnosis.assessment_id.in_(assessment_ids),
+                    AssessmentDiagnosis.deleted_at.is_(None),
+                )
+            )
+        ).scalars():
+            diagnoses_by_aid[d.assessment_id] = d
+
+        # 2. Problem observations via JOIN through diagnosis
+        if diagnoses_by_aid:
+            diagnosis_ids = [d.id for d in diagnoses_by_aid.values()]
+            obs_stmt = (
+                select(
+                    ProblemObservation,
+                    AssessmentDiagnosis.assessment_id,
+                    ErrorPattern.slug.label("pattern_slug"),
+                    ErrorPattern.name.label("pattern_name"),
+                    ErrorCategory.slug.label("category_slug"),
+                )
+                .join(
+                    AssessmentDiagnosis,
+                    ProblemObservation.diagnosis_id == AssessmentDiagnosis.id,
+                )
+                .outerjoin(
+                    ErrorPattern,
+                    ProblemObservation.error_pattern_id == ErrorPattern.id,
+                )
+                .outerjoin(
+                    ErrorSubcategory,
+                    ErrorPattern.subcategory_id == ErrorSubcategory.id,
+                )
+                .outerjoin(
+                    ErrorCategory,
+                    ErrorSubcategory.category_id == ErrorCategory.id,
+                )
+                .where(
+                    ProblemObservation.diagnosis_id.in_(diagnosis_ids),
+                    ProblemObservation.deleted_at.is_(None),
+                )
+                .order_by(
+                    AssessmentDiagnosis.assessment_id,
+                    ProblemObservation.problem_number,
+                )
+            )
+            for obs, aid, pat_slug, pat_name, cat_slug in (
+                await db.execute(obs_stmt)
+            ).all():
+                obs_by_aid.setdefault(aid, []).append(
+                    (obs, pat_slug, pat_name, cat_slug)
+                )
+
+        # 3. Reviews (non-deleted), keyed by assessment_id
+        for r in (
+            await db.execute(
+                select(DiagnosticReview).where(
+                    DiagnosticReview.assessment_id.in_(assessment_ids),
+                    DiagnosticReview.deleted_at.is_(None),
+                )
+            )
+        ).scalars():
+            reviews_by_aid.setdefault(r.assessment_id, []).append(r)
+
+        # 4. Pattern index for override patterns referenced by reviews
+        override_ids = {
+            r.override_pattern_id
+            for rs in reviews_by_aid.values()
+            for r in rs
+            if r.override_pattern_id is not None
+        }
+        if override_ids:
+            for p in (
+                await db.execute(
+                    select(ErrorPattern).where(ErrorPattern.id.in_(override_ids))
+                )
+            ).scalars():
+                pattern_index[p.id] = p
+
+    # Adapter to satisfy _ReviewRow protocol without fetching User rows (list endpoint).
+    class _ListReviewAdapter:
+        def __init__(self, row: DiagnosticReview) -> None:
+            self.id = row.id
+            self.problem_number = row.problem_number
+            self.marked_correct = row.marked_correct
+            self.override_pattern_id = row.override_pattern_id
+            self.note = row.note
+            self.reviewed_at = row.reviewed_at
+            self.reviewer_name = ""  # not needed for HeadlineInputs
+
+    def _build_headline_inputs(aid: UUID) -> HeadlineInputs | None:
+        diag = diagnoses_by_aid.get(aid)
+        if diag is None:
+            return None
+
+        # Build ProblemObservationResponse objects (overlay requires this type).
+        raw_problems: list[ProblemObservationResponse] = []
+        for obs, pat_slug, pat_name, cat_slug in obs_by_aid.get(aid, []):
+            raw_problems.append(
+                ProblemObservationResponse(
+                    id=obs.id,
+                    problem_number=obs.problem_number,
+                    page_number=obs.page_number,
+                    student_answer=obs.student_answer,
+                    correct_answer=obs.correct_answer,
+                    is_correct=obs.is_correct,
+                    error_pattern_slug=pat_slug,
+                    error_pattern_name=pat_name,
+                    error_category_slug=cat_slug,
+                    error_description=obs.error_description,
+                    solution_steps=obs.solution_steps,
+                )
+            )
+
+        adapters = [_ListReviewAdapter(r) for r in reviews_by_aid.get(aid, [])]
+        effective = apply_reviews_to_problems(
+            OverlayInputs(
+                problems=raw_problems,
+                reviews=adapters,  # type: ignore[arg-type]
+                pattern_index=pattern_index,  # type: ignore[arg-type]
+            )
+        )
+
+        return HeadlineInputs(
+            total_problems_seen=diag.total_problems_seen,
+            overall_summary=diag.overall_summary,
+            problems=[
+                HeadlineProblem(
+                    problem_number=p.problem_number,
+                    is_correct=p.is_correct,
+                    error_pattern_slug=p.error_pattern_slug,
+                    error_pattern_name=p.error_pattern_name,
+                )
+                for p in effective
+            ],
+        )
 
     items: list[AssessmentListItem] = []
     ctx = CallContext(
@@ -211,7 +386,7 @@ async def list_assessments(
         contains_pii=False,
         audit_reason="render dashboard recent list thumbnails",
     )
-    for assessment, student_name, page_count, first_page_key in result.all():
+    for assessment, student_name, page_count, first_page_key in rows:
         if first_page_key is None:
             # Skip rows that somehow have no page (shouldn't happen post-migration).
             continue
@@ -219,6 +394,11 @@ async def list_assessments(
             ctx=ctx,
             key=first_page_key,
             db=db,
+        )
+        hi = (
+            _build_headline_inputs(assessment.id)
+            if assessment.status == AssessmentStatus.completed
+            else None
         )
         items.append(
             AssessmentListItem(
@@ -229,9 +409,17 @@ async def list_assessments(
                 first_page_thumbnail_url=thumb_url,
                 status=assessment.status,
                 uploaded_at=assessment.uploaded_at,
+                has_key=assessment.answer_key_id is not None,
+                headline_inputs=hi,
             )
         )
-    return AssessmentListResponse(assessments=items)
+
+    next_cursor = rows[-1][0].uploaded_at if has_more and rows else None
+    return AssessmentListResponse(
+        assessments=items,
+        has_more=has_more,
+        next_cursor=next_cursor,
+    )
 
 
 @router.post(

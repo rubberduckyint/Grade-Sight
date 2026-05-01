@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 from contextlib import AbstractContextManager
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
@@ -23,10 +25,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from grade_sight_api.auth.dependencies import get_current_user
 from grade_sight_api.db import get_session
 from grade_sight_api.main import app
+from grade_sight_api.models.answer_key import AnswerKey
 from grade_sight_api.models.assessment import Assessment, AssessmentStatus
+from grade_sight_api.models.assessment_diagnosis import AssessmentDiagnosis
 from grade_sight_api.models.assessment_page import AssessmentPage
 from grade_sight_api.models.audit_log import AuditLog
+from grade_sight_api.models.diagnostic_review import DiagnosticReview
 from grade_sight_api.models.organization import Organization
+from grade_sight_api.models.problem_observation import ProblemObservation
 from grade_sight_api.models.student import Student
 from grade_sight_api.models.user import User, UserRole
 from grade_sight_api.services import storage_service
@@ -818,6 +824,459 @@ async def test_get_assessment_applies_review_overlay(
     assert problems[0]["is_correct"] is True  # effective state from mark-correct
     assert problems[0]["review"] is not None
     assert problems[0]["review"]["marked_correct"] is True
+
+
+# ---- GET /api/assessments — new fields: has_key, headline_inputs, pagination ----
+
+
+async def test_list_assessments_has_key_reflects_answer_key_id(
+    async_session: AsyncSession,
+) -> None:
+    """has_key=True when answer_key_id is set; False when null."""
+    user = await _seed_user(async_session)
+    student = await _seed_student(async_session, user)
+    key = AnswerKey(
+        uploaded_by_user_id=user.id,
+        organization_id=user.organization_id,
+        name="Test Key",
+    )
+    async_session.add(key)
+    await async_session.flush()
+
+    a_with_key = Assessment(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        uploaded_by_user_id=user.id,
+        answer_key_id=key.id,
+        status=AssessmentStatus.completed,
+        uploaded_at=datetime(2026, 4, 28, tzinfo=timezone.utc).replace(tzinfo=None),
+    )
+    a_no_key = Assessment(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        uploaded_by_user_id=user.id,
+        answer_key_id=None,
+        status=AssessmentStatus.completed,
+        uploaded_at=datetime(2026, 4, 27, tzinfo=timezone.utc).replace(tzinfo=None),
+    )
+    async_session.add(a_with_key)
+    async_session.add(a_no_key)
+    await async_session.flush()
+
+    for a in (a_with_key, a_no_key):
+        async_session.add(
+            AssessmentPage(
+                assessment_id=a.id,
+                page_number=1,
+                s3_url=f"k/{a.id}/page-001.png",
+                original_filename="page-1.png",
+                content_type="image/png",
+                organization_id=user.organization_id,
+            )
+        )
+    await async_session.flush()
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/get?sig=hk"
+    try:
+        with _patch_r2_client(fake_url):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    "/api/assessments",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    by_id = {a["id"]: a for a in body["assessments"]}
+    assert by_id[str(a_with_key.id)]["has_key"] is True
+    assert by_id[str(a_no_key.id)]["has_key"] is False
+
+
+async def _seed_completed_assessment(
+    session: AsyncSession,
+    user: User,
+    problems: list[dict[str, Any]],
+    total_problems_seen: int | None = None,
+    overall_summary: str = "ok",
+    uploaded_at: datetime | None = None,
+) -> tuple[Student, Assessment]:
+    """Seed a completed assessment with diagnosis + observations for list-endpoint tests."""
+    student = Student(
+        created_by_user_id=user.id,
+        organization_id=user.organization_id,
+        full_name="S",
+    )
+    session.add(student)
+    await session.flush()
+
+    ts = uploaded_at or datetime(2026, 4, 28)
+    a = Assessment(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        uploaded_by_user_id=user.id,
+        status=AssessmentStatus.completed,
+        uploaded_at=ts,
+    )
+    session.add(a)
+    await session.flush()
+
+    session.add(
+        AssessmentPage(
+            assessment_id=a.id,
+            page_number=1,
+            s3_url=f"k/{a.id}/page-001.png",
+            original_filename="page-1.png",
+            content_type="image/png",
+            organization_id=user.organization_id,
+        )
+    )
+
+    diag = AssessmentDiagnosis(
+        assessment_id=a.id,
+        organization_id=user.organization_id,
+        model="claude-sonnet-4-6",
+        prompt_version="v1",
+        tokens_input=10,
+        tokens_output=5,
+        cost_usd=Decimal("0.001"),
+        latency_ms=100,
+        overall_summary=overall_summary,
+        total_problems_seen=total_problems_seen if total_problems_seen is not None else len(problems),
+    )
+    session.add(diag)
+    await session.flush()
+
+    for p in problems:
+        session.add(
+            ProblemObservation(
+                diagnosis_id=diag.id,
+                organization_id=user.organization_id,
+                problem_number=p["problem_number"],
+                page_number=1,
+                student_answer=p.get("student_answer", "ans"),
+                correct_answer=p.get("correct_answer", "corr"),
+                is_correct=p["is_correct"],
+                error_pattern_id=p.get("pattern_id"),
+            )
+        )
+    await session.flush()
+    return student, a
+
+
+async def test_list_assessments_headline_inputs_null_for_processing(
+    async_session: AsyncSession,
+) -> None:
+    """headline_inputs is None for non-completed statuses."""
+    user = await _seed_user(async_session)
+    student = await _seed_student(async_session, user)
+
+    a = Assessment(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        uploaded_by_user_id=user.id,
+        status=AssessmentStatus.processing,
+        uploaded_at=datetime(2026, 4, 28),
+    )
+    async_session.add(a)
+    await async_session.flush()
+    async_session.add(
+        AssessmentPage(
+            assessment_id=a.id,
+            page_number=1,
+            s3_url=f"k/{a.id}/page-001.png",
+            original_filename="page-1.png",
+            content_type="image/png",
+            organization_id=user.organization_id,
+        )
+    )
+    await async_session.flush()
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/get?sig=null"
+    try:
+        with _patch_r2_client(fake_url):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    "/api/assessments",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["assessments"]) == 1
+    assert body["assessments"][0]["headline_inputs"] is None
+
+
+async def test_list_assessments_headline_inputs_populated_for_completed(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    """headline_inputs is populated for completed assessments with a diagnosis."""
+    user = await _seed_user(async_session)
+    pattern = seed_minimal_taxonomy["pattern"]
+
+    _, a = await _seed_completed_assessment(
+        async_session,
+        user,
+        problems=[
+            {"problem_number": 1, "is_correct": True},
+            {"problem_number": 2, "is_correct": False, "pattern_id": pattern.id},
+            {"problem_number": 3, "is_correct": False, "pattern_id": pattern.id},
+        ],
+        total_problems_seen=3,
+        overall_summary="2 wrong.",
+    )
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/get?sig=pop"
+    try:
+        with _patch_r2_client(fake_url):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    "/api/assessments",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["assessments"]) == 1
+    hi = body["assessments"][0]["headline_inputs"]
+    assert hi is not None
+    assert hi["total_problems_seen"] == 3
+    assert hi["overall_summary"] == "2 wrong."
+    assert len(hi["problems"]) == 3
+    assert hi["problems"][0]["problem_number"] == 1
+    assert hi["problems"][0]["is_correct"] is True
+    assert hi["problems"][1]["error_pattern_slug"] == pattern.slug
+
+
+async def test_list_assessments_headline_inputs_reflects_review_overlay(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    """Review overlay flips is_correct for mark-correct reviews in list endpoint."""
+    user = await _seed_user(async_session)
+
+    _, a = await _seed_completed_assessment(
+        async_session,
+        user,
+        problems=[
+            {"problem_number": 1, "is_correct": False},
+        ],
+        overall_summary="1 wrong.",
+    )
+
+    review = DiagnosticReview(
+        assessment_id=a.id,
+        problem_number=1,
+        marked_correct=True,
+        reviewed_by=user.id,
+        reviewed_at=datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+    async_session.add(review)
+    await async_session.flush()
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/get?sig=ov"
+    try:
+        with _patch_r2_client(fake_url):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    "/api/assessments",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["assessments"]) == 1
+    hi = body["assessments"][0]["headline_inputs"]
+    assert hi is not None
+    assert len(hi["problems"]) == 1
+    assert hi["problems"][0]["is_correct"] is True  # overlay applied
+
+
+async def _seed_assessment_at(
+    session: AsyncSession,
+    user: User,
+    dt: datetime,
+) -> Assessment:
+    """Seed a minimal pending assessment with one page at a specific uploaded_at."""
+    student = Student(
+        created_by_user_id=user.id,
+        organization_id=user.organization_id,
+        full_name="X",
+    )
+    session.add(student)
+    await session.flush()
+    a = Assessment(
+        student_id=student.id,
+        organization_id=user.organization_id,
+        uploaded_by_user_id=user.id,
+        status=AssessmentStatus.pending,
+        uploaded_at=dt,
+    )
+    session.add(a)
+    await session.flush()
+    session.add(
+        AssessmentPage(
+            assessment_id=a.id,
+            page_number=1,
+            s3_url=f"k/{a.id}/page-001.png",
+            original_filename="page-1.png",
+            content_type="image/png",
+            organization_id=user.organization_id,
+        )
+    )
+    await session.flush()
+    return a
+
+
+async def test_list_assessments_since_filter(
+    async_session: AsyncSession,
+) -> None:
+    """since=2026-04-22 returns only Apr 25 and Apr 30, in desc order."""
+    user = await _seed_user(async_session)
+    a15 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 15))
+    a20 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 20))
+    a25 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 25))
+    a30 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 30))
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/get?sig=since"
+    try:
+        with _patch_r2_client(fake_url):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    "/api/assessments?since=2026-04-22",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    ids = [a["id"] for a in body["assessments"]]
+    assert str(a30.id) in ids
+    assert str(a25.id) in ids
+    assert str(a20.id) not in ids
+    assert str(a15.id) not in ids
+    # Descending order
+    assert ids[0] == str(a30.id)
+    assert ids[1] == str(a25.id)
+
+
+async def test_list_assessments_until_filter_inclusive(
+    async_session: AsyncSession,
+) -> None:
+    """until=2026-04-25 returns Apr 25, 20, 15 (inclusive of the date itself)."""
+    user = await _seed_user(async_session)
+    a15 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 15))
+    a20 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 20))
+    a25 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 25))
+    a30 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 30))
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/get?sig=until"
+    try:
+        with _patch_r2_client(fake_url):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    "/api/assessments?until=2026-04-25",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    ids = [a["id"] for a in body["assessments"]]
+    assert str(a25.id) in ids
+    assert str(a20.id) in ids
+    assert str(a15.id) in ids
+    assert str(a30.id) not in ids
+    # Descending order
+    assert ids[0] == str(a25.id)
+    assert ids[1] == str(a20.id)
+    assert ids[2] == str(a15.id)
+
+
+async def test_list_assessments_cursor_pagination(
+    async_session: AsyncSession,
+) -> None:
+    """limit=2 cursor pagination over 5 assessments (Apr 26-30)."""
+    user = await _seed_user(async_session)
+    a26 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 26))
+    a27 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 27))
+    a28 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 28))
+    a29 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 29))
+    a30 = await _seed_assessment_at(async_session, user, datetime(2026, 4, 30))
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/get?sig=pag"
+    try:
+        with _patch_r2_client(fake_url):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                # Page 1
+                r1 = await client.get(
+                    "/api/assessments?limit=2",
+                    headers={"Authorization": "Bearer fake"},
+                )
+                assert r1.status_code == 200
+                b1 = r1.json()
+                assert [a["id"] for a in b1["assessments"]] == [
+                    str(a30.id), str(a29.id)
+                ]
+                assert b1["has_more"] is True
+                next_cursor = b1["next_cursor"]
+                assert next_cursor is not None
+
+                # Page 2
+                r2 = await client.get(
+                    f"/api/assessments?limit=2&cursor={next_cursor}",
+                    headers={"Authorization": "Bearer fake"},
+                )
+                assert r2.status_code == 200
+                b2 = r2.json()
+                assert [a["id"] for a in b2["assessments"]] == [
+                    str(a28.id), str(a27.id)
+                ]
+                assert b2["has_more"] is True
+                next_cursor2 = b2["next_cursor"]
+                assert next_cursor2 is not None
+
+                # Page 3 (last)
+                r3 = await client.get(
+                    f"/api/assessments?limit=2&cursor={next_cursor2}",
+                    headers={"Authorization": "Bearer fake"},
+                )
+                assert r3.status_code == 200
+                b3 = r3.json()
+                assert [a["id"] for a in b3["assessments"]] == [str(a26.id)]
+                assert b3["has_more"] is False
+                assert b3["next_cursor"] is None
+    finally:
+        app.dependency_overrides.clear()
 
 
 async def test_create_assessment_rejects_cross_org_answer_key(
