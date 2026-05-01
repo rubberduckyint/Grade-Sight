@@ -11,7 +11,6 @@ import {
   fetchStudents,
 } from "@/lib/api";
 import type { PriceInfo } from "@/lib/api";
-import type { AppHeaderTab } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
 import { PageContainer } from "@/components/page-container";
 import { SectionEyebrow } from "@/components/section-eyebrow";
@@ -20,18 +19,7 @@ import { TrialBanner } from "@/components/trial-banner";
 import { RecentAssessmentsList } from "@/components/recent-assessments-list";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const PARENT_TABS: AppHeaderTab[] = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Students", href: "/students" },
-];
-
-const TEACHER_TABS: AppHeaderTab[] = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Students", href: "/students" },
-  { label: "Assessments", href: "/assessments" },
-  { label: "Answer keys", href: "/keys" },
-];
+import { PARENT_TABS, TEACHER_TABS } from "@/lib/nav";
 
 async function handleCheckout() {
   "use server";

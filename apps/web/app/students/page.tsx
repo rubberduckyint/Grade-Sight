@@ -7,16 +7,23 @@ import { PageContainer } from "@/components/page-container";
 import { SectionEyebrow } from "@/components/section-eyebrow";
 import { SerifHeadline } from "@/components/serif-headline";
 import { fetchMe, fetchStudents } from "@/lib/api";
+import { PARENT_TABS, TEACHER_TABS } from "@/lib/nav";
 
 export default async function StudentsPage() {
   const [user, students] = await Promise.all([fetchMe(), fetchStudents()]);
   if (!user) redirect("/sign-in");
+
+  const role = user.role === "teacher" ? "teacher" : "parent";
+  const tabs = role === "teacher" ? TEACHER_TABS : PARENT_TABS;
 
   return (
     <AppShell
       orgName={user.organization?.name}
       userId={user.id}
       organizationId={user.organization?.id ?? null}
+      tabs={tabs}
+      activeHref="/students"
+      uploadHref="/upload"
     >
       <PageContainer className="max-w-[800px]">
         <SectionEyebrow>Roster</SectionEyebrow>
