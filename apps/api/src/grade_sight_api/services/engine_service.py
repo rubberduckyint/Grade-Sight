@@ -22,12 +22,13 @@ from __future__ import annotations
 import json
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -258,11 +259,44 @@ async def diagnose_assessment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="assessment does not belong to your organization",
         )
-    if assessment.status != AssessmentStatus.pending:
+    # Re-run support: if a diagnostic was already run (status completed or
+    # failed), soft-delete the prior AssessmentDiagnosis + ProblemObservation
+    # rows and reset status to pending so the rest of this function can
+    # proceed normally. Active teacher diagnostic_reviews persist across
+    # re-runs (keyed by assessment_id + problem_number, not diagnosis_id).
+    # `processing` still 409s — a diagnostic in flight should not be
+    # double-fired.
+    if assessment.status == AssessmentStatus.processing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"assessment status is {assessment.status.value}; cannot diagnose",
+            detail="diagnostic is already in flight",
         )
+    if assessment.status in (AssessmentStatus.completed, AssessmentStatus.failed):
+        # Match the established project convention for soft-delete columns
+        # (TIMESTAMP WITHOUT TIME ZONE in this schema).
+        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        await db.execute(
+            update(AssessmentDiagnosis)
+            .where(
+                AssessmentDiagnosis.assessment_id == assessment.id,
+                AssessmentDiagnosis.deleted_at.is_(None),
+            )
+            .values(deleted_at=now)
+        )
+        await db.execute(
+            update(ProblemObservation)
+            .where(
+                ProblemObservation.diagnosis_id.in_(
+                    select(AssessmentDiagnosis.id).where(
+                        AssessmentDiagnosis.assessment_id == assessment.id,
+                    )
+                ),
+                ProblemObservation.deleted_at.is_(None),
+            )
+            .values(deleted_at=now)
+        )
+        assessment.status = AssessmentStatus.pending
+        await db.flush()
 
     # 2. Load pages.
     pages_result = await db.execute(

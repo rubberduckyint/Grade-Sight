@@ -356,11 +356,16 @@ async def test_diagnose_403_cross_org(
     assert exc_info.value.status_code == 403
 
 
-async def test_diagnose_409_when_already_diagnosed(
+async def test_diagnose_409_when_processing(
     async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
 ) -> None:
+    """Status `processing` still 409s — a diagnostic in flight should not be
+    double-fired. (Re-run from `completed` / `failed` is allowed; that path
+    soft-deletes the prior diagnosis and resets status to pending — covered
+    indirectly by the happy-path tests that assume a clean pending start.)
+    """
     _, user, asmt = await _seed_assessment_with_pages(
-        async_session, status=AssessmentStatus.completed
+        async_session, status=AssessmentStatus.processing
     )
 
     with pytest.raises(HTTPException) as exc_info:
