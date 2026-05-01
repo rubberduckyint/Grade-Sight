@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Literal
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +13,14 @@ from ..auth.dependencies import get_current_user
 from ..db import get_session
 from ..models.student import Student
 from ..models.student_profile import StudentProfile
-from ..models.user import User
+from ..models.user import User, UserRole
+from ..schemas.biography import StudentBiographyResponse
 from ..schemas.students import (
     StudentCreate,
     StudentListResponse,
     StudentResponse,
 )
+from ..services import biography_service
 
 router = APIRouter()
 
@@ -99,3 +104,40 @@ async def create_student(
         grade_level=payload.grade_level,
         created_at=student.created_at,
     )
+
+
+@router.get(
+    "/api/students/{student_id}/biography",
+    response_model=StudentBiographyResponse,
+)
+async def get_student_biography(
+    student_id: UUID,
+    weeks: int = 6,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> StudentBiographyResponse:
+    """Return the longitudinal biography view for a student."""
+    if weeks < 1 or weeks > 26:
+        raise HTTPException(status_code=400, detail="weeks must be 1..26")
+
+    student = await db.scalar(
+        select(Student).where(Student.id == student_id, Student.deleted_at.is_(None))
+    )
+    if student is None:
+        raise HTTPException(status_code=404, detail="student not found")
+
+    if user.role == UserRole.parent:
+        if student.created_by_user_id != user.id:
+            raise HTTPException(status_code=404, detail="student not found")
+        role: Literal["parent", "teacher"] = "parent"
+    else:
+        if student.organization_id is None or student.organization_id != user.organization_id:
+            raise HTTPException(status_code=404, detail="student not found")
+        role = "teacher"
+
+    biography = await biography_service.build_biography(
+        student_id=student_id, role=role, db=db, window_weeks=weeks
+    )
+    if biography is None:
+        raise HTTPException(status_code=404, detail="student not found")
+    return biography

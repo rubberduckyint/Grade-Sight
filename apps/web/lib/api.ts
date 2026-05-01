@@ -17,6 +17,7 @@ export type {
   PriceInfo,
   PricesResponse,
   Student,
+  StudentBiography,
   TrialStats,
 } from "./types";
 
@@ -29,6 +30,7 @@ import type {
   ErrorPattern,
   PricesResponse,
   Student,
+  StudentBiography,
   TrialStats,
 } from "./types";
 
@@ -175,4 +177,19 @@ export async function fetchErrorPatterns(): Promise<ErrorPattern[]> {
     throw new Error(`GET /api/error-patterns failed: ${response.status}`);
   }
   return (await response.json()) as ErrorPattern[];
+}
+
+// ---- Student biography ----
+
+export async function fetchStudentBiography(
+  id: string,
+  weeks?: number,
+): Promise<StudentBiography | null> {
+  const qs = weeks ? `?weeks=${weeks}` : "";
+  const response = await authedFetch(`/api/students/${id}/biography${qs}`, { method: "GET" });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`GET /api/students/${id}/biography failed: ${response.status}`);
+  }
+  return (await response.json()) as StudentBiography;
 }

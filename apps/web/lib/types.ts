@@ -160,3 +160,68 @@ export interface ErrorPattern {
   category_slug: string;
   category_name: string;
 }
+
+// ---- Student biography ----
+
+export interface StudentSummary {
+  id: string;
+  full_name: string;
+  first_name: string;
+  grade_level: number | null;
+  added_at: string;
+}
+
+export interface BiographyStats {
+  assessments_count: number;
+  average_score_percent: number | null;
+  problems_reviewed: number;
+  problems_missed: number;
+  patterns_detected: number;
+  recurring_count: number;
+}
+
+export interface WeekBucket {
+  week_start: string;
+  label: string;
+  count: number;
+}
+
+export interface PatternTimelineRow {
+  slug: string;
+  name: string;
+  category_slug: string;
+  category_name: string;
+  weeks: WeekBucket[];
+  total_count: number;
+  trend: "recurring" | "fading" | "new" | "one_off";
+}
+
+export interface RecentAssessmentRow {
+  id: string;
+  name: string;
+  uploaded_at: string;
+  mode: "auto_grade" | "with_key" | "already_graded";
+  answer_key_name: string | null;
+  score_right: number;
+  score_total: number;
+  primary_error_pattern_name: string | null;
+  primary_error_pattern_count: number;
+}
+
+export interface BiographySentence {
+  kind: "structured" | "fallback";
+  eyebrow: string;
+  lead: string | null;
+  accent: string | null;
+  coda: string | null;
+  text: string | null;
+}
+
+export interface StudentBiography {
+  student: StudentSummary;
+  stats: BiographyStats;
+  weeks: string[];
+  pattern_timeline: PatternTimelineRow[];
+  recent_assessments: RecentAssessmentRow[];
+  sentence: BiographySentence;
+}

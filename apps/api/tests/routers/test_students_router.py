@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from collections.abc import AsyncIterator
 from uuid import UUID, uuid4
 
@@ -233,3 +234,151 @@ async def test_list_returns_only_user_org_students(async_session: AsyncSession) 
     body = r.json()
     names = [s["full_name"] for s in body["students"]]
     assert names == ["Student A"]
+
+
+async def _seed_student(session: AsyncSession, user: User) -> Student:
+    student = Student(
+        created_by_user_id=user.id,
+        organization_id=user.organization_id,
+        full_name="Test Student",
+    )
+    session.add(student)
+    await session.flush()
+    return student
+
+
+@pytest.mark.db
+async def test_biography_returns_200_for_org_teacher(async_session: AsyncSession) -> None:
+    """Happy path: teacher in org → 200 with the documented shape."""
+    user = await _seed_user(async_session)
+    student = await _seed_student(async_session, user)
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_session] = lambda: async_session
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(f"/api/students/{student.id}/biography")
+            assert response.status_code == 200
+            body = response.json()
+            assert body["student"]["id"] == str(student.id)
+            assert "stats" in body
+            assert "pattern_timeline" in body
+            assert "recent_assessments" in body
+            assert "sentence" in body
+            assert body["sentence"]["eyebrow"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.db
+async def test_biography_returns_404_for_other_org_teacher(async_session: AsyncSession) -> None:
+    """Teacher in a different org cannot access this student's biography."""
+    org_a = Organization(name="A")
+    org_b = Organization(name="B")
+    async_session.add_all([org_a, org_b])
+    await async_session.flush()
+
+    user_a = User(
+        clerk_id=f"u_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:6]}@a.test",
+        role=UserRole.teacher,
+        first_name="A",
+        last_name="Teach",
+        organization_id=org_a.id,
+    )
+    async_session.add(user_a)
+    await async_session.flush()
+
+    student = Student(
+        created_by_user_id=user_a.id,
+        full_name="S",
+        organization_id=org_a.id,
+    )
+    async_session.add(student)
+    await async_session.flush()
+
+    teacher_b = User(
+        clerk_id=f"u_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:6]}@b.test",
+        role=UserRole.teacher,
+        first_name="B",
+        last_name="Teach",
+        organization_id=org_b.id,
+    )
+    async_session.add(teacher_b)
+    await async_session.flush()
+
+    app.dependency_overrides[get_current_user] = lambda: teacher_b
+    app.dependency_overrides[get_session] = lambda: async_session
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(f"/api/students/{student.id}/biography")
+            assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.db
+async def test_biography_returns_404_when_student_missing(async_session: AsyncSession) -> None:
+    user = await _seed_user(async_session)
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_session] = lambda: async_session
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(f"/api/students/{uuid4()}/biography")
+            assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.db
+async def test_biography_returns_404_for_parent_wrong_student(async_session: AsyncSession) -> None:
+    """Parent attempting to access a student they didn't create → 404."""
+    # Parent A creates a student; parent B tries to read it
+    parent_a = User(
+        clerk_id=f"u_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:6]}@a.test",
+        role=UserRole.parent,
+        first_name="A",
+        last_name="Parent",
+        organization_id=None,
+    )
+    parent_b = User(
+        clerk_id=f"u_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:6]}@b.test",
+        role=UserRole.parent,
+        first_name="B",
+        last_name="Parent",
+        organization_id=None,
+    )
+    async_session.add_all([parent_a, parent_b])
+    await async_session.flush()
+
+    student = Student(
+        full_name="Marcus",
+        organization_id=None,
+        created_by_user_id=parent_a.id,
+    )
+    async_session.add(student)
+    await async_session.flush()
+
+    app.dependency_overrides[get_current_user] = lambda: parent_b
+    app.dependency_overrides[get_session] = lambda: async_session
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(f"/api/students/{student.id}/biography")
+            assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.db
+async def test_biography_returns_401_when_unauthenticated(async_session: AsyncSession) -> None:
+    """No auth dependency override → real auth runs → no token → 401."""
+    app.dependency_overrides[get_session] = lambda: async_session
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(f"/api/students/{uuid4()}/biography")
+            assert response.status_code in {401, 403}
+    finally:
+        app.dependency_overrides.clear()
