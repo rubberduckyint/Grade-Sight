@@ -192,8 +192,7 @@ export function AnswerKeyUploadForm({
     setProgress(null);
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>): void {
-    e.preventDefault();
+  function handleSave(): void {
     startTransition(async () => {
       try {
         await uploadAll();
@@ -205,8 +204,13 @@ export function AnswerKeyUploadForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
+    // NOTE: this used to be a <form> element. It is rendered inside the
+    // outer <AssessmentUploadForm>'s <form>, and HTML5 forbids nested
+    // <form>s — browsers flatten the inner form so the inner submit
+    // bubbles to the outer form, causing the outer assessment-upload to
+    // submit on "Save answer key" clicks. Using a <div> + an explicit
+    // type="button" save button avoids the bubble.
+    <div
       className="rounded-[var(--radius-sm)] border border-rule bg-paper-soft p-6 space-y-5"
     >
       <p className="font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
@@ -226,10 +230,18 @@ export function AnswerKeyUploadForm({
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            // Prevent Enter from submitting the outer assessment <form>.
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (!isPending && name.trim() && staged.length > 0) {
+                handleSave();
+              }
+            }
+          }}
           placeholder="e.g. Algebra 1 Chapter 7 Quiz Key"
           className="mt-1 w-full rounded-[var(--radius-sm)] border border-rule bg-paper px-3 py-2 text-base text-ink focus-visible:outline-2 focus-visible:outline-accent"
           disabled={isPending}
-          required
         />
       </div>
 
@@ -324,7 +336,8 @@ export function AnswerKeyUploadForm({
 
       <div className="flex gap-3">
         <Button
-          type="submit"
+          type="button"
+          onClick={handleSave}
           disabled={isPending || staged.length === 0 || !name.trim()}
         >
           {isPending
@@ -342,6 +355,6 @@ export function AnswerKeyUploadForm({
           </Button>
         )}
       </div>
-    </form>
+    </div>
   );
 }
