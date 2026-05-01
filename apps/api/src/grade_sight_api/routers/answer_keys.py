@@ -22,6 +22,7 @@ from ..auth.dependencies import get_current_user
 from ..db import get_session
 from ..models.answer_key import AnswerKey
 from ..models.answer_key_page import AnswerKeyPage
+from ..models.assessment import Assessment
 from ..models.user import User
 from ..schemas.answer_keys import (
     AnswerKeyCreateRequest,
@@ -31,6 +32,7 @@ from ..schemas.answer_keys import (
     AnswerKeyListResponse,
     AnswerKeyPageUploadIntent,
     AnswerKeySummary,
+    AnswerKeyUsage,
 )
 from ..services import storage_service
 from ..services.call_context import CallContext
@@ -100,6 +102,28 @@ async def list_answer_keys(
         .limit(limit)
     )
 
+    rows = result.all()
+    key_ids = [k.id for k, _, _ in rows]
+
+    usage_map: dict[UUID, AnswerKeyUsage] = {}
+    if key_ids:
+        usage_stmt = (
+            select(
+                Assessment.answer_key_id,
+                func.count(Assessment.id).label("used_count"),
+                func.max(Assessment.uploaded_at).label("last_used_at"),
+            )
+            .where(
+                Assessment.answer_key_id.in_(key_ids),
+                Assessment.deleted_at.is_(None),
+            )
+            .group_by(Assessment.answer_key_id)
+        )
+        for ak_id, count, last_at in (await db.execute(usage_stmt)).all():
+            usage_map[ak_id] = AnswerKeyUsage(
+                used_count=int(count), last_used_at=last_at
+            )
+
     items: list[AnswerKeySummary] = []
     ctx = CallContext(
         organization_id=user.organization_id,
@@ -108,7 +132,7 @@ async def list_answer_keys(
         contains_pii=False,
         audit_reason="render answer key picker thumbnails",
     )
-    for key_row, page_count, first_page_key in result.all():
+    for key_row, page_count, first_page_key in rows:
         if first_page_key is None:
             continue
         thumb_url = await storage_service.get_download_url(
@@ -123,6 +147,10 @@ async def list_answer_keys(
                 page_count=int(page_count or 0),
                 first_page_thumbnail_url=thumb_url,
                 created_at=key_row.created_at,
+                usage=usage_map.get(
+                    key_row.id,
+                    AnswerKeyUsage(used_count=0, last_used_at=None),
+                ),
             )
         )
     return AnswerKeyListResponse(answer_keys=items)
