@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AddStudentForm } from "@/components/add-student-form";
@@ -32,13 +33,21 @@ export default async function StudentsPage() {
         ) : (
           <ul className="mb-10 divide-y divide-rule-soft border-y border-rule-soft">
             {students.map((s) => (
-              <li key={s.id} className="flex items-baseline justify-between py-3">
-                <span className="text-base text-ink">{s.full_name}</span>
-                {s.grade_level != null && (
-                  <span className="font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
-                    Grade {s.grade_level}
+              <li key={s.id}>
+                <Link
+                  href={`/students/${s.id}`}
+                  className="flex items-baseline justify-between py-3 hover:bg-paper-soft -mx-2 px-2 rounded-[var(--radius-sm)] focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  <span className="text-base text-ink">{s.full_name}</span>
+                  <span className="flex items-baseline gap-3">
+                    {s.grade_level != null && (
+                      <span className="font-mono text-xs uppercase tracking-[0.12em] text-ink-mute">
+                        Grade {s.grade_level}
+                      </span>
+                    )}
+                    <span aria-hidden="true" className="font-mono text-xs text-ink-mute">›</span>
                   </span>
-                )}
+                </Link>
               </li>
             ))}
           </ul>
