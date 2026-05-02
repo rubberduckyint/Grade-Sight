@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageContainer } from "@/components/page-container";
 import { fetchAnswerKeys, fetchMe } from "@/lib/api";
 import { TEACHER_TABS } from "@/lib/nav";
-import { KeyCardGrid } from "@/components/keys/key-card-grid";
+import { KeyList } from "@/components/keys/key-list";
 import { EmptyKeyLibrary } from "@/components/keys/empty-key-library";
 import { KeyLibraryHeader } from "@/components/keys/key-library-header";
 import { WhyKeyLibraryNote } from "@/components/keys/why-key-library-note";
@@ -27,7 +27,7 @@ export default async function KeysPage() {
         {keys.length === 0 ? (
           <EmptyKeyLibrary />
         ) : (
-          <KeyCardGrid keys={keys} />
+          <KeyList keys={keys} />
         )}
         <WhyKeyLibraryNote />
       </PageContainer>
