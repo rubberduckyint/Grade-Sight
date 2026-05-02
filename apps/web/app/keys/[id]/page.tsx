@@ -7,6 +7,7 @@ import { SectionEyebrow } from "@/components/section-eyebrow";
 import { SerifHeadline } from "@/components/serif-headline";
 import { fetchAnswerKeyDetail, fetchMe } from "@/lib/api";
 import { TEACHER_TABS } from "@/lib/nav";
+import { DeleteKeyButton } from "@/components/keys/delete-key-button";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -65,6 +66,10 @@ export default async function KeyDetailPage({ params }: PageProps) {
               </figcaption>
             </figure>
           ))}
+        </div>
+
+        <div className="mt-16 border-t border-rule-soft pt-8">
+          <DeleteKeyButton id={key.id} />
         </div>
       </PageContainer>
     </AppShell>
