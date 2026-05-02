@@ -275,6 +275,30 @@ async def test_soft_delete_teacher_in_multi_teacher_org_raises(async_session):
 
 
 @pytest.mark.asyncio
+async def test_soft_delete_handles_stub_subscription_without_stripe_id(async_session):
+    """Trial-phase users have a Subscription row with stripe_subscription_id=None.
+    The local row must still be soft-deleted; Stripe is skipped."""
+    user, _, _, _, org = await _seed_parent_with_data(async_session)
+    sub = Subscription(
+        organization_id=org.id,
+        stripe_customer_id="cus_test",
+        stripe_subscription_id=None,  # trial phase
+        plan="parent_monthly",
+        status="trialing",
+    )
+    async_session.add(sub)
+    await async_session.commit()
+
+    mock_cancel = AsyncMock()
+    with patch.object(stripe_service, "cancel_at_period_end", mock_cancel):
+        await account_deletion_service.soft_delete_user(user=user, db=async_session)
+
+    mock_cancel.assert_not_awaited()  # no Stripe call
+    await async_session.refresh(sub)
+    assert sub.deleted_at is not None  # but the local row IS soft-deleted
+
+
+@pytest.mark.asyncio
 async def test_soft_delete_user_with_zero_owned_data_succeeds(async_session):
     org = Organization(name="Empty")
     async_session.add(org)

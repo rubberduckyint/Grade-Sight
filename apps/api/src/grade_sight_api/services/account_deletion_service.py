@@ -96,23 +96,27 @@ async def _cancel_stripe_subscription(*, user: User, db: AsyncSession) -> None:
         )
     )
     subscription = result.scalar_one_or_none()
-    if subscription is None or not subscription.stripe_subscription_id:
+    if subscription is None:
         return
-    try:
-        await stripe_service.cancel_at_period_end(subscription.stripe_subscription_id)
-    except Exception as exc:  # noqa: BLE001
-        db.add(AuditLog(
-            organization_id=user.organization_id,
-            user_id=user.id,
-            resource_type="subscription",
-            resource_id=subscription.id,
-            action="subscription_cancel_failed",
-            event_metadata={
-                "stripe_subscription_id": subscription.stripe_subscription_id,
-                "error": str(exc),
-            },
-        ))
-    # Soft-delete the local subscription row regardless
+
+    # Stripe call (best-effort, only if there's a real Stripe sub to cancel)
+    if subscription.stripe_subscription_id:
+        try:
+            await stripe_service.cancel_at_period_end(subscription.stripe_subscription_id)
+        except Exception as exc:  # noqa: BLE001
+            db.add(AuditLog(
+                organization_id=user.organization_id,
+                user_id=user.id,
+                resource_type="subscription",
+                resource_id=subscription.id,
+                action="subscription_cancel_failed",
+                event_metadata={
+                    "stripe_subscription_id": subscription.stripe_subscription_id,
+                    "error": str(exc),
+                },
+            ))
+
+    # Soft-delete the local subscription row regardless of whether Stripe was involved
     await db.execute(
         update(Subscription)
         .where(Subscription.id == subscription.id)
@@ -192,7 +196,6 @@ async def _cascade_children(
         (StudentProfile, Student, "student_id"),
         (AssessmentPage, Assessment, "assessment_id"),
         (AssessmentDiagnosis, Assessment, "assessment_id"),
-        (DiagnosticReview, Assessment, "assessment_id"),
         (ProblemObservation, AssessmentDiagnosis, "diagnosis_id"),
         (AnswerKeyPage, AnswerKey, "answer_key_id"),
         (ClassMember, Klass, "class_id"),
@@ -208,3 +211,18 @@ async def _cascade_children(
             )
             .values(deleted_at=now)
         )
+
+    # DiagnosticReview is the lone soft-deletable table with a tz-aware
+    # deleted_at column (TIMESTAMPTZ — it doesn't use SoftDeleteMixin).
+    # Write a tz-aware value to keep Postgres tz interpretation deterministic.
+    now_aware = datetime.now(timezone.utc)
+    await db.execute(
+        update(DiagnosticReview)
+        .where(
+            DiagnosticReview.assessment_id.in_(
+                select(Assessment.id).where(Assessment.deleted_at == now)
+            ),
+            DiagnosticReview.deleted_at.is_(None),
+        )
+        .values(deleted_at=now_aware)
+    )
