@@ -28,7 +28,7 @@ export default async function AssessmentsPage({ searchParams }: PageProps) {
   const role: Role = "teacher";
   const rows = list.assessments.map((a) => ({
     ...a,
-    headline: a.headline_inputs ? buildTopSentence(a.headline_inputs as never, role) : null,
+    headline: a.headline_inputs ? buildTopSentence(a.headline_inputs, role) : null,
   }));
 
   const filtersActive = since != null || until != null;
@@ -58,6 +58,7 @@ export default async function AssessmentsPage({ searchParams }: PageProps) {
                 initialCursor={list.next_cursor}
                 role={role}
                 since={since ?? null}
+                until={until ?? null}
               />
             )}
           </>

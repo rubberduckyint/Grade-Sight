@@ -13,7 +13,7 @@ interface RowData extends AssessmentListItem { headline: TopSentence | null }
 function buildRowData(items: AssessmentListItem[], role: Role): RowData[] {
   return items.map((a) => ({
     ...a,
-    headline: a.headline_inputs ? buildTopSentence(a.headline_inputs as never, role) : null,
+    headline: a.headline_inputs ? buildTopSentence(a.headline_inputs, role) : null,
   }));
 }
 
@@ -21,10 +21,12 @@ export function LoadEarlierButton({
   initialCursor,
   role,
   since,
+  until,
 }: {
   initialCursor: string;
   role: Role;
   since: string | null;
+  until: string | null;
 }) {
   const [appended, setAppended] = useState<RowData[]>([]);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
@@ -34,7 +36,7 @@ export function LoadEarlierButton({
 
   function loadMore() {
     startTransition(async () => {
-      const resp = await loadAssessments({ cursor: cursor ?? undefined, since: since ?? undefined, limit: 50 });
+      const resp = await loadAssessments({ cursor: cursor ?? undefined, since: since ?? undefined, until: until ?? undefined, limit: 50 });
       setAppended((prev) => [...prev, ...buildRowData(resp.assessments, role)]);
       setCursor(resp.has_more ? resp.next_cursor : null);
     });
