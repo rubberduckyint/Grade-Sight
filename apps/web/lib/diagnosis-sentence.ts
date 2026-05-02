@@ -174,3 +174,8 @@ export function groupProblemsByPattern(
   }
   return namedGroups;
 }
+
+export function renderHeadline(s: TopSentence): string {
+  if (s.kind === "fallback") return s.text;
+  return s.accentPhrase ? `${s.lead} ${s.accentPhrase}` : s.lead;
+}
