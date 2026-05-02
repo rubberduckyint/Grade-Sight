@@ -11,6 +11,7 @@ from grade_sight_api.models.assessment import Assessment, AssessmentStatus
 from grade_sight_api.models.assessment_page import AssessmentPage
 from grade_sight_api.models.answer_key import AnswerKey
 from grade_sight_api.models.audit_log import AuditLog
+from grade_sight_api.models.klass import Klass
 from grade_sight_api.models.organization import Organization
 from grade_sight_api.models.student import Student
 from grade_sight_api.models.subscription import Subscription
@@ -170,3 +171,125 @@ async def test_soft_delete_does_not_affect_other_users_data(async_session):
     for row in (user_b, student_b, a_b, key_b):
         await async_session.refresh(row)
         assert row.deleted_at is None
+
+
+async def _seed_teacher_with_data(
+    db: AsyncSession,
+) -> tuple[User, Organization, Student, Assessment, AnswerKey, Klass]:
+    org = Organization(name="School")
+    db.add(org)
+    await db.flush()
+    teacher = User(
+        clerk_id=f"clerk_{uuid4()}",
+        email=f"teacher_{uuid4()}@test.local",
+        role=UserRole.teacher,
+        organization_id=org.id,
+    )
+    db.add(teacher)
+    await db.flush()
+    student = Student(
+        organization_id=org.id,
+        created_by_user_id=teacher.id,
+        full_name="Pupil",
+    )
+    db.add(student)
+    await db.flush()
+    a = Assessment(
+        organization_id=org.id,
+        uploaded_by_user_id=teacher.id,
+        student_id=student.id,
+        status=AssessmentStatus.completed,
+        uploaded_at=datetime(2026, 4, 28),  # naive — matches the existing test pattern
+    )
+    db.add(a)
+    await db.flush()
+    db.add(AssessmentPage(
+        assessment_id=a.id,
+        organization_id=org.id,
+        page_number=1,
+        original_filename="p.png",
+        s3_url="s3://a/p.png",
+        content_type="image/png",
+    ))
+    key = AnswerKey(
+        organization_id=org.id,
+        uploaded_by_user_id=teacher.id,
+        name="K",
+    )
+    db.add(key)
+    await db.flush()
+    klass = Klass(
+        organization_id=org.id,
+        teacher_id=teacher.id,
+        name="4th period",
+    )
+    db.add(klass)
+    await db.commit()
+    return teacher, org, student, a, key, klass
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_teacher_cascades_org_classes_and_owned_data(async_session):
+    teacher, org, student, a, key, klass = await _seed_teacher_with_data(async_session)
+
+    with patch.object(stripe_service, "cancel_at_period_end", AsyncMock()):
+        await account_deletion_service.soft_delete_user(user=teacher, db=async_session)
+
+    for row in (teacher, org, student, a, key, klass):
+        await async_session.refresh(row)
+        assert row.deleted_at is not None
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_teacher_in_multi_teacher_org_raises(async_session):
+    teacher_a, org, _, _, _, _ = await _seed_teacher_with_data(async_session)
+    teacher_b = User(
+        clerk_id=f"clerk_{uuid4()}",
+        email=f"teacher_b_{uuid4()}@test.local",
+        role=UserRole.teacher,
+        organization_id=org.id,
+    )
+    async_session.add(teacher_b)
+    await async_session.commit()
+
+    teacher_a_id = teacher_a.id
+    org_id = org.id
+
+    # Use a SAVEPOINT so the raised error can be cleanly rolled back without
+    # invalidating the outer test-isolation transaction.
+    with patch.object(stripe_service, "cancel_at_period_end", AsyncMock()):
+        async with async_session.begin_nested() as sp:
+            with pytest.raises(account_deletion_service.MultiTeacherOrgError):
+                await account_deletion_service.soft_delete_user(user=teacher_a, db=async_session)
+            await sp.rollback()
+
+    # Nothing got soft-deleted — confirm via fresh selects
+    teacher_a_reloaded = (await async_session.execute(
+        select(User).where(User.id == teacher_a_id)
+    )).scalar_one()
+    org_reloaded = (await async_session.execute(
+        select(Organization).where(Organization.id == org_id)
+    )).scalar_one()
+    assert teacher_a_reloaded.deleted_at is None
+    assert org_reloaded.deleted_at is None
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_user_with_zero_owned_data_succeeds(async_session):
+    org = Organization(name="Empty")
+    async_session.add(org)
+    await async_session.flush()
+    user = User(
+        clerk_id=f"clerk_{uuid4()}",
+        email=f"empty_{uuid4()}@test.local",
+        role=UserRole.parent,
+        organization_id=org.id,
+    )
+    async_session.add(user)
+    await async_session.commit()
+
+    with patch.object(stripe_service, "cancel_at_period_end", AsyncMock()):
+        await account_deletion_service.soft_delete_user(user=user, db=async_session)
+
+    await async_session.refresh(user)
+    assert user.deleted_at is not None
