@@ -90,7 +90,7 @@ export default async function DashboardPage() {
     daysRemaining !== null &&
     daysRemaining <= 7;
 
-  const isFirstRun = assessments.length === 0;
+  const isFirstRun = assessments.assessments.length === 0;
 
   return (
     <AppShell
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
           <PopulatedDashboard
             now={now}
             userName={firstName}
-            assessments={assessments}
+            assessments={assessments.assessments}
           />
         )}
       </PageContainer>
@@ -150,7 +150,7 @@ function PopulatedDashboard({
 }: {
   now: Date;
   userName: string;
-  assessments: Awaited<ReturnType<typeof fetchAssessments>>;
+  assessments: import("@/lib/types").AssessmentListItem[];
 }) {
   return (
     <>

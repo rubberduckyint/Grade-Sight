@@ -179,6 +179,7 @@ export function AnswerKeyUploadForm({
           page_count: pairs.length,
           first_page_thumbnail_url: placeholderThumb,
           created_at: new Date().toISOString(),
+          usage: { used_count: 0, last_used_at: null },
         });
         return;
       }

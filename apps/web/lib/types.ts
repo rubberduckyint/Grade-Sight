@@ -15,6 +15,24 @@ export interface Student {
 
 export type AssessmentStatus = "pending" | "processing" | "completed" | "failed";
 
+export interface HeadlineProblem {
+  problem_number: number;
+  is_correct: boolean;
+  error_pattern_slug: string | null;
+  error_pattern_name: string | null;
+}
+
+export interface HeadlineInputs {
+  total_problems_seen: number | null;
+  overall_summary: string | null;
+  problems: HeadlineProblem[];
+}
+
+export interface AnswerKeyUsage {
+  used_count: number;
+  last_used_at: string | null; // ISO datetime
+}
+
 export interface AssessmentListItem {
   id: string;
   student_id: string;
@@ -23,6 +41,14 @@ export interface AssessmentListItem {
   first_page_thumbnail_url: string;
   status: AssessmentStatus;
   uploaded_at: string;
+  has_key: boolean;
+  headline_inputs: HeadlineInputs | null;
+}
+
+export interface AssessmentListResponse {
+  assessments: AssessmentListItem[];
+  has_more: boolean;
+  next_cursor: string | null;
 }
 
 export interface AssessmentPageUploadIntent {
@@ -88,6 +114,7 @@ export interface AnswerKey {
   page_count: number;
   first_page_thumbnail_url: string;
   created_at: string;
+  usage: AnswerKeyUsage;
 }
 
 export interface AnswerKeyDetailPage {
