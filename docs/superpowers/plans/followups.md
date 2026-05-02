@@ -156,6 +156,18 @@ Items the Step 13a brainstorm (2026-05-01) intentionally pushed out:
 - **Items count per key.** The canvas shows "12 items" alongside page
   count. We'd have to count parsed answer rows per key. Page count is
   close enough for v1; revisit if teachers ask for it.
+- **Sortable table columns · post-MVP.** Both `/assessments` archive
+  and `/keys` library are tables today; columns are not sortable.
+  Standard pattern: click a column header to sort ascending, click
+  again to flip to descending, click a third time to clear (or always
+  toggle between asc/desc). Minimum coverage: Name (alpha) and Date
+  (chrono) on `/keys`; Date and Student (alpha) on `/assessments`.
+  Implementation note: sort state should be URL-bound (`?sort=name`,
+  `?sort=-name` for desc) so back-button + share-link both work, and
+  the backend should accept the same param so server-side ordering is
+  authoritative — don't re-sort on the client. Pair with cursor
+  pagination already in place: cursor needs to be keyed to whichever
+  column is being sorted.
 
 ## Paywall right-column trial stats — opportunistic
 
