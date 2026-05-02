@@ -7,8 +7,7 @@ import { ArchiveHeader } from "@/components/archive/archive-header";
 import { ArchiveFilters } from "@/components/archive/archive-filters";
 import { ArchiveTable } from "@/components/archive/archive-table";
 import { LoadEarlierButton } from "@/components/archive/load-earlier-button";
-import { buildTopSentence, type Role, type TopSentence } from "@/lib/diagnosis-sentence";
-import type { AssessmentListItem } from "@/lib/types";
+import { buildTopSentence, type Role } from "@/lib/diagnosis-sentence";
 
 interface PageProps {
   searchParams: Promise<{ since?: string; until?: string }>;
