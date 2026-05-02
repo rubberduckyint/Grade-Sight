@@ -9,5 +9,5 @@ export const TEACHER_TABS: AppHeaderTab[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Students", href: "/students" },
   { label: "Assessments", href: "/assessments" },
-  { label: "Answer keys", href: "/keys" },
+  { label: "Keys", href: "/keys" },
 ];

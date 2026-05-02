@@ -8,7 +8,7 @@ export function KeyLibraryHeader() {
       <div>
         <SectionEyebrow>Library</SectionEyebrow>
         <div className="mt-3">
-          <SerifHeadline level="page" as="h1">Answer keys</SerifHeadline>
+          <SerifHeadline level="page" as="h1">Keys</SerifHeadline>
         </div>
         <p className="mt-2 text-base text-ink-soft max-w-[640px]">
           Upload a key once, reuse it across periods.
