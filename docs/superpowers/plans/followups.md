@@ -143,10 +143,11 @@ Items the Step 13a brainstorm (2026-05-01) intentionally pushed out:
   low-use advanced features; pair the Pattern filter with the glossary
   step (both are "let users navigate by pattern" UI). Has-key ships
   whenever someone asks for it — trivial backend change.
-- **`/keys/[id]` detail page.** Cards on `/keys` are non-clickable in
-  v1. A detail page would show parsed answer items, page thumbnails,
-  rename/delete affordances. Not on the launch path; teachers can edit
-  via `AnswerKeyPicker` on `/upload` in the meantime.
+- **`/keys/[id]` rename/delete affordances.** A minimal detail page
+  shipped with Step 13a (page thumbnails + back-link). Rename and
+  delete affordances are still deferred — teachers can edit via
+  `AnswerKeyPicker` on `/upload` in the meantime. Parsed-answer-item
+  display also deferred to whenever the parser story gets attention.
 - **"Verified vs draft" answer-key state.** The canvas mock shows a
   green "verified" / amber "draft" badge per key. We don't have a
   schema concept for verified state today (a key is just rows of
