@@ -388,3 +388,158 @@ async def test_patch_class_cross_teacher_returns_404(async_session):
         assert resp.status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_add_class_members_happy_path(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    s1 = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="S1")
+    s2 = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="S2")
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add_all([s1, s2, klass])
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/classes/{klass.id}/members",
+                json={"student_ids": [str(s1.id), str(s2.id)]},
+            )
+        assert resp.status_code == 200
+        names = sorted(m["student_name"] for m in resp.json()["roster"])
+        assert names == ["S1", "S2"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_add_class_members_idempotent(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    s1 = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="S1")
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add_all([s1, klass])
+    await async_session.flush()
+    async_session.add(ClassMember(class_id=klass.id, student_id=s1.id, organization_id=org.id))
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/classes/{klass.id}/members",
+                json={"student_ids": [str(s1.id)]},
+            )
+        assert resp.status_code == 200
+        assert len(resp.json()["roster"]) == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_add_class_members_cross_org_student_returns_404(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    other_org = Organization(name="other")
+    async_session.add(other_org)
+    await async_session.flush()
+    other_student = Student(
+        organization_id=other_org.id, created_by_user_id=teacher.id, full_name="X"
+    )
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add_all([other_student, klass])
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/classes/{klass.id}/members",
+                json={"student_ids": [str(other_student.id)]},
+            )
+        assert resp.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_add_class_members_reenroll_after_left(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    s1 = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="S1")
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add_all([s1, klass])
+    await async_session.flush()
+    async_session.add(ClassMember(
+        class_id=klass.id, student_id=s1.id, organization_id=org.id,
+        left_at=datetime(2026, 4, 1),
+    ))
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/classes/{klass.id}/members",
+                json={"student_ids": [str(s1.id)]},
+            )
+        assert resp.status_code == 200
+        assert len(resp.json()["roster"]) == 1  # active row exists
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_remove_class_member_sets_left_at(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    s1 = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="S1")
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add_all([s1, klass])
+    await async_session.flush()
+    async_session.add(ClassMember(class_id=klass.id, student_id=s1.id, organization_id=org.id))
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.delete(f"/api/classes/{klass.id}/members/{s1.id}")
+            assert resp.status_code == 204
+            detail = await client.get(f"/api/classes/{klass.id}")
+            assert detail.json()["roster"] == []
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_remove_class_member_404_if_not_active(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    s1 = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="S1")
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add_all([s1, klass])
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.delete(f"/api/classes/{klass.id}/members/{s1.id}")
+        assert resp.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_remove_class_member_cross_teacher_returns_404(async_session):
+    teacher_a, org = await _seed_teacher(async_session)
+    teacher_b, _ = await _seed_teacher(async_session, org=org)
+    s1 = Student(organization_id=org.id, created_by_user_id=teacher_b.id, full_name="S1")
+    klass_b = Klass(organization_id=org.id, teacher_id=teacher_b.id, name="B's class")
+    async_session.add_all([s1, klass_b])
+    await async_session.flush()
+    async_session.add(ClassMember(class_id=klass_b.id, student_id=s1.id, organization_id=org.id))
+    await async_session.commit()
+
+    _override_deps(async_session, teacher_a)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.delete(f"/api/classes/{klass_b.id}/members/{s1.id}")
+        assert resp.status_code == 404
+    finally:
+        app.dependency_overrides.clear()

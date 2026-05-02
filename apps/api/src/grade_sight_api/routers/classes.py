@@ -16,6 +16,7 @@ from ..models.student import Student
 from ..models.student_profile import StudentProfile
 from ..models.user import User, UserRole
 from ..schemas.classes import (
+    AddMembersRequest,
     ClassCreate,
     ClassDetailResponse,
     ClassListItem,
@@ -238,3 +239,86 @@ async def update_class(
         student_count=int(student_count or 0),
         created_at=klass.created_at,
     )
+
+
+@router.post(
+    "/api/classes/{class_id}/members",
+    response_model=ClassDetailResponse,
+)
+async def add_class_members(
+    class_id: UUID,
+    payload: AddMembersRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> ClassDetailResponse:
+    _require_teacher(user)
+    klass = await _get_class_or_404(class_id, user, db)
+
+    if not payload.student_ids:
+        return await _build_detail_response(klass, db)
+
+    valid_ids_result = await db.execute(
+        select(Student.id).where(
+            Student.id.in_(payload.student_ids),
+            Student.organization_id == user.organization_id,
+            Student.deleted_at.is_(None),
+        )
+    )
+    valid_ids = {row[0] for row in valid_ids_result.all()}
+
+    invalid = set(payload.student_ids) - valid_ids
+    if invalid:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Students not found: {sorted(str(i) for i in invalid)}",
+        )
+
+    existing_active = await db.execute(
+        select(ClassMember.student_id).where(
+            ClassMember.class_id == klass.id,
+            ClassMember.student_id.in_(valid_ids),
+            ClassMember.left_at.is_(None),
+            ClassMember.deleted_at.is_(None),
+        )
+    )
+    already_active = {row[0] for row in existing_active.all()}
+
+    for sid in valid_ids - already_active:
+        db.add(ClassMember(
+            class_id=klass.id,
+            student_id=sid,
+            organization_id=user.organization_id,
+        ))
+    await db.commit()
+
+    return await _build_detail_response(klass, db)
+
+
+@router.delete(
+    "/api/classes/{class_id}/members/{student_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_class_member(
+    class_id: UUID,
+    student_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    _require_teacher(user)
+    klass = await _get_class_or_404(class_id, user, db)
+
+    result = await db.execute(
+        update(ClassMember)
+        .where(
+            ClassMember.class_id == klass.id,
+            ClassMember.student_id == student_id,
+            ClassMember.left_at.is_(None),
+            ClassMember.deleted_at.is_(None),
+        )
+        .values(left_at=datetime.now(timezone.utc).replace(tzinfo=None))
+        .returning(ClassMember.id)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="student is not active in this class")
+
+    await db.commit()
