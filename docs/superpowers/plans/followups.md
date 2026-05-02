@@ -8,25 +8,27 @@ The v2 sequence (Steps 01–15) is in §Implementation of
 `docs/design/Grade Sight Handoff v2.html`. Step labels here mean v2 steps,
 not Phase-1 specs.
 
-## Launch sequence (re-ordered 2026-05-01)
+## Launch sequence (re-ordered 2026-05-01; 13d deferred 2026-05-01)
 
-The handoff doc's v2 sequence ended at Step 15 (Mobile upload), but two
-launch-critical surfaces aren't on it: the teacher class flow and the
-bulk-grade loop. Both are needed before a teacher can use the product
-day-one. Re-sequenced to insert them ahead of print + mobile, plus a
-navigation-polish step at the end. Step numbers stable through Step 13;
-inserts use alpha suffixes so handoff-doc Step 14 / 15 references in
-existing code/docs stay valid.
+The handoff doc's v2 sequence ended at Step 15 (Mobile upload). The
+class flow (13c) is needed before a teacher can use the product
+day-one and was inserted into the launch path. The bulk-grade loop
+(13d) was originally inserted alongside but **moved to post-launch on
+2026-05-01** — teachers can grade one assessment at a time via
+`/upload` for first release; the queue-through UX is a meaningful
+optimization, not a launch blocker. Print intervention's
+class-context integration also defers with it.
 
 | Order | Step | Status |
 |---|---|---|
-| 13a | Archive + Keys (current brainstorm) | in design |
-| 13b | Privacy (own brainstorm) | pending |
-| 13c | **Teacher class-creation flow** (insert) | pending |
-| 13d | **Bulk-grade workflow / "teacher loop"** (insert) | pending |
+| 13a | Archive + Keys | shipped 2026-05-01 |
+| 13b | Privacy | shipped 2026-05-01 |
+| 13c | Teacher class-creation flow (insert) | shipped 2026-05-01 |
 | 14 | Print intervention (handoff doc) | pending |
 | 15 | Mobile upload (handoff doc) | pending |
-| 15a | **Navigation polish** (insert) | pending |
+| 15a | Navigation polish (insert) | pending |
+
+**Post-launch (in `## Step 13d` below):** Bulk-grade workflow.
 
 ## Step 13c · Teacher class-creation flow
 
@@ -47,16 +49,20 @@ Common-math subject dropdown options (write-in supported as "Other…"):
 Pre-Algebra · Algebra 1 · Geometry · Algebra 2 · Pre-Calculus · Calculus ·
 Statistics.
 
-## Step 13d · Bulk-grade workflow ("teacher loop")
+## Step 13d · Bulk-grade workflow ("teacher loop") — post-launch
 
-Surfaced same brainstorm; promoted to the launch path 2026-05-01.
+Surfaced 2026-04-29; promoted to the launch path 2026-05-01; **deferred
+to post-launch 2026-05-01** after class flow shipped. Teachers can
+grade one assessment at a time via `/upload` for first release; this
+workflow is a meaningful UX optimization, not a launch blocker.
+
 Teacher creates a test (= named answer key, e.g. "Chapter 2 Quiz 1"),
 uploads the answer key once, then loops through the class roster:
 per-student photo upload → analyze → print intervention (Step 14) →
 **Next student** affordance returns to the queue with progress shown
 ("12 of 27 done"). Schema supports it (multiple assessments share one
 `answer_key_id`); missing is the queue-through UX. Depends on Step 13c
-(class flow) — without classes there's no roster to loop through. Also
+(class flow, shipped) — roster to loop through is now available. Also
 the natural home for **class-grade CSV export** (one row per student
 in the class, columns: name, score, primary pattern, link to diagnosis)
 — surfaced 2026-05-01; the v1 archive on `/assessments` does not need
