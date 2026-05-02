@@ -53,13 +53,40 @@ Surfaced same brainstorm; promoted to the launch path 2026-05-01.
 Teacher creates a test (= named answer key, e.g. "Chapter 2 Quiz 1"),
 uploads the answer key once, then loops through the class roster:
 per-student photo upload → analyze → print intervention (Step 14) →
-next student. Schema supports it (multiple assessments share one
+**Next student** affordance returns to the queue with progress shown
+("12 of 27 done"). Schema supports it (multiple assessments share one
 `answer_key_id`); missing is the queue-through UX. Depends on Step 13c
 (class flow) — without classes there's no roster to loop through. Also
 the natural home for **class-grade CSV export** (one row per student
 in the class, columns: name, score, primary pattern, link to diagnosis)
 — surfaced 2026-05-01; the v1 archive on `/assessments` does not need
 its own CSV.
+
+**Flow improvements to brainstorm before scheduling 13d** (surfaced
+2026-05-01):
+
+- **Batch-upload-then-process.** Teachers actually grade in evening
+  sessions with a stack of papers. Asking them to wait for one
+  diagnosis before scanning the next breaks rhythm. Better: take all
+  27 photos upfront (camera roll already supports this), drop them
+  onto the roster as a batch, let the engine grade in the background,
+  surface results as they finish. Teacher walks the queue at their own
+  pace instead of being paced by the engine. Largest single UX win.
+- **Skip / absent / missing affordance.** Not every student takes
+  every quiz. Without a "skip" or "mark absent" button, the queue
+  blocks on edge cases. Required for completeness, not optional.
+- **Class-level patterns in the queue rail.** As the teacher works
+  through students, surface emerging patterns: "5 of 12 graded
+  students missed problem 7." Lets the teacher decide whether to
+  reteach tomorrow vs. assign individual interventions. Distinctive
+  product value — turns the queue from a chore into a diagnostic
+  tool.
+
+Other improvements to consider (lower priority): keyboard shortcuts
+(J/K/P/N) for power-users, OCR auto-detect of student name from quiz
+header, print-all interventions as a stapled batch, resume-from-where-
+you-stopped after interruption, "looks fine" quick-scan mode for
+high-performers.
 
 ## Step 15a · Navigation polish
 
