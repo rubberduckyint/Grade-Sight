@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { AnswerKey } from "@/lib/types";
 
 function formatDate(iso: string | null): string {
@@ -15,12 +14,11 @@ export function KeyCard({ ak }: { ak: AnswerKey }) {
     <div className="flex flex-col overflow-hidden rounded-[var(--radius-md)] border border-rule bg-paper">
       <div className="relative aspect-[3/2] bg-paper-soft border-b border-rule-soft">
         {ak.first_page_thumbnail_url && (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={ak.first_page_thumbnail_url}
             alt=""
-            fill
-            sizes="(max-width: 768px) 100vw, 33vw"
-            className="object-contain"
+            className="absolute inset-0 h-full w-full object-contain"
           />
         )}
       </div>
