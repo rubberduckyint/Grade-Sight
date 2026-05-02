@@ -1,10 +1,11 @@
 """Classes router — teacher-only CRUD for classes + roster management."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth.dependencies import get_current_user
@@ -20,6 +21,7 @@ from ..schemas.classes import (
     ClassListItem,
     ClassListResponse,
     ClassRosterMember,
+    ClassUpdate,
 )
 
 router = APIRouter()
@@ -173,4 +175,66 @@ async def create_class(
         archived=False,
         student_count=0,
         created_at=new_class.created_at,
+    )
+
+
+@router.get("/api/classes/{class_id}", response_model=ClassDetailResponse)
+async def get_class_detail(
+    class_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> ClassDetailResponse:
+    _require_teacher(user)
+    klass = await _get_class_or_404(class_id, user, db)
+    return await _build_detail_response(klass, db)
+
+
+@router.patch("/api/classes/{class_id}", response_model=ClassListItem)
+async def update_class(
+    class_id: UUID,
+    payload: ClassUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> ClassListItem:
+    _require_teacher(user)
+    klass = await _get_class_or_404(class_id, user, db)
+
+    fields_to_set: dict[str, object] = {}
+    if payload.name is not None:
+        new_name = payload.name.strip()
+        if not new_name:
+            raise HTTPException(status_code=400, detail="name cannot be empty")
+        fields_to_set["name"] = new_name
+    if payload.subject is not None:
+        fields_to_set["subject"] = payload.subject
+    if payload.grade_level is not None:
+        fields_to_set["grade_level"] = payload.grade_level
+    if payload.archived is True:
+        fields_to_set["deleted_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
+    elif payload.archived is False:
+        fields_to_set["deleted_at"] = None
+
+    if fields_to_set:
+        await db.execute(
+            update(Klass).where(Klass.id == klass.id).values(**fields_to_set)
+        )
+        await db.commit()
+        await db.refresh(klass)
+
+    student_count = await db.scalar(
+        select(func.count(ClassMember.id)).where(
+            ClassMember.class_id == klass.id,
+            ClassMember.left_at.is_(None),
+            ClassMember.deleted_at.is_(None),
+        )
+    )
+
+    return ClassListItem(
+        id=klass.id,
+        name=klass.name,
+        subject=klass.subject,
+        grade_level=klass.grade_level,
+        archived=klass.deleted_at is not None,
+        student_count=int(student_count or 0),
+        created_at=klass.created_at,
     )

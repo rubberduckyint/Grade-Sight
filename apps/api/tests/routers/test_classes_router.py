@@ -216,3 +216,175 @@ async def test_create_class_subject_and_grade_optional(async_session):
         assert body["grade_level"] is None
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_class_detail_returns_roster_with_student_names(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    student = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="Marcus Reilly")
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add_all([student, klass])
+    await async_session.flush()
+    async_session.add(ClassMember(class_id=klass.id, student_id=student.id, organization_id=org.id))
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get(f"/api/classes/{klass.id}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "K"
+        assert len(data["roster"]) == 1
+        assert data["roster"][0]["student_name"] == "Marcus Reilly"
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_class_detail_cross_teacher_returns_404(async_session):
+    teacher_a, org = await _seed_teacher(async_session)
+    teacher_b, _ = await _seed_teacher(async_session, org=org)
+    klass_b = Klass(organization_id=org.id, teacher_id=teacher_b.id, name="B's class")
+    async_session.add(klass_b)
+    await async_session.commit()
+
+    _override_deps(async_session, teacher_a)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get(f"/api/classes/{klass_b.id}")
+        assert resp.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_class_detail_archived_returns_archived_flag(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    klass = Klass(
+        organization_id=org.id, teacher_id=teacher.id, name="K",
+        deleted_at=datetime(2026, 4, 1),
+    )
+    async_session.add(klass)
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get(f"/api/classes/{klass.id}")
+        assert resp.status_code == 200
+        assert resp.json()["archived"] is True
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_class_detail_excludes_left_students(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    student_active = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="Active")
+    student_left = Student(organization_id=org.id, created_by_user_id=teacher.id, full_name="Left")
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add_all([student_active, student_left, klass])
+    await async_session.flush()
+    async_session.add_all([
+        ClassMember(class_id=klass.id, student_id=student_active.id, organization_id=org.id),
+        ClassMember(class_id=klass.id, student_id=student_left.id, organization_id=org.id, left_at=datetime(2026, 4, 1)),
+    ])
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get(f"/api/classes/{klass.id}")
+        names = [m["student_name"] for m in resp.json()["roster"]]
+        assert names == ["Active"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_patch_class_updates_name(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="Old")
+    async_session.add(klass)
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.patch(f"/api/classes/{klass.id}", json={"name": "New"})
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "New"
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_patch_class_archive_sets_deleted_at(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add(klass)
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.patch(f"/api/classes/{klass.id}", json={"archived": True})
+        assert resp.status_code == 200
+        assert resp.json()["archived"] is True
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_patch_class_unarchive_clears_deleted_at(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    klass = Klass(
+        organization_id=org.id, teacher_id=teacher.id, name="K",
+        deleted_at=datetime(2026, 4, 1),
+    )
+    async_session.add(klass)
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.patch(f"/api/classes/{klass.id}", json={"archived": False})
+        assert resp.status_code == 200
+        assert resp.json()["archived"] is False
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_patch_class_empty_body_returns_unchanged(async_session):
+    teacher, org = await _seed_teacher(async_session)
+    klass = Klass(organization_id=org.id, teacher_id=teacher.id, name="K")
+    async_session.add(klass)
+    await async_session.commit()
+
+    _override_deps(async_session, teacher)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.patch(f"/api/classes/{klass.id}", json={})
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "K"
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_patch_class_cross_teacher_returns_404(async_session):
+    teacher_a, org = await _seed_teacher(async_session)
+    teacher_b, _ = await _seed_teacher(async_session, org=org)
+    klass_b = Klass(organization_id=org.id, teacher_id=teacher_b.id, name="B's class")
+    async_session.add(klass_b)
+    await async_session.commit()
+
+    _override_deps(async_session, teacher_a)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.patch(f"/api/classes/{klass_b.id}", json={"name": "hijacked"})
+        assert resp.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
