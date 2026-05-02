@@ -8,6 +8,11 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
+class AnswerKeyUsage(BaseModel):
+    used_count: int
+    last_used_at: datetime | None
+
+
 class AnswerKeyFile(BaseModel):
     filename: str
     content_type: str
@@ -35,6 +40,7 @@ class AnswerKeySummary(BaseModel):
     page_count: int
     first_page_thumbnail_url: str
     created_at: datetime
+    usage: AnswerKeyUsage
 
 
 class AnswerKeyListResponse(BaseModel):

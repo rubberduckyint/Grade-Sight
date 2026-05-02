@@ -1,9 +1,17 @@
-import type {
-  AssessmentDiagnosis,
-  ProblemObservation,
-} from "@/lib/types";
+import type { ProblemObservation } from "@/lib/types";
 
 export type Role = "parent" | "teacher";
+
+export interface HeadlineSource {
+  problems: ReadonlyArray<{
+    problem_number: number;
+    is_correct: boolean;
+    error_pattern_slug: string | null;
+    error_pattern_name: string | null;
+  }>;
+  total_problems_seen: number | null;
+  overall_summary: string | null;
+}
 
 export type TopSentence =
   | {
@@ -32,7 +40,7 @@ export function firstName(fullName: string): string {
 }
 
 export function buildTopSentence(
-  diagnosis: AssessmentDiagnosis,
+  diagnosis: HeadlineSource,
   role: Role,
 ): TopSentence {
   const { problems, total_problems_seen, overall_summary } = diagnosis;
@@ -173,4 +181,9 @@ export function groupProblemsByPattern(
     return [...namedGroups, otherBucket];
   }
   return namedGroups;
+}
+
+export function renderHeadline(s: TopSentence): string {
+  if (s.kind === "fallback") return s.text;
+  return s.accentPhrase ? `${s.lead} ${s.accentPhrase}` : s.lead;
 }

@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { env } from "@/env";
 import type {
   AnswerKeyUploadIntent,
+  AssessmentListResponse,
   AssessmentUploadIntent,
   Student,
 } from "./types";
@@ -103,4 +104,24 @@ export async function deleteAnswerKey(id: string): Promise<void> {
   if (!response.ok) {
     throw new Error(`DELETE /api/answer-keys/${id} failed: ${response.status}`);
   }
+}
+
+export async function loadAssessments(opts?: {
+  limit?: number;
+  since?: string;
+  until?: string;
+  cursor?: string;
+}): Promise<AssessmentListResponse> {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  if (opts?.since) params.set("since", opts.since);
+  if (opts?.until) params.set("until", opts.until);
+  if (opts?.cursor) params.set("cursor", opts.cursor);
+  const qs = params.toString();
+  const url = `/api/assessments${qs ? `?${qs}` : ""}`;
+  const response = await callApi(url, { method: "GET" });
+  if (response.status === 401)
+    return { assessments: [], has_more: false, next_cursor: null };
+  if (!response.ok) throw new Error(`GET /api/assessments failed: ${response.status}`);
+  return (await response.json()) as AssessmentListResponse;
 }

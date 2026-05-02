@@ -19,8 +19,9 @@ interface StagedFile {
 }
 
 export interface AnswerKeyUploadFormProps {
-  onCreated: (key: AnswerKey) => void;
+  onCreated?: (key: AnswerKey) => void;
   onCancel?: () => void;
+  onSuccess?: () => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -31,6 +32,7 @@ function formatBytes(bytes: number): string {
 export function AnswerKeyUploadForm({
   onCreated,
   onCancel,
+  onSuccess,
 }: AnswerKeyUploadFormProps) {
   const [name, setName] = useState("");
   const [staged, setStaged] = useState<StagedFile[]>([]);
@@ -173,13 +175,15 @@ export function AnswerKeyUploadForm({
         if (placeholderThumb) {
           handedOverUrlsRef.current.add(placeholderThumb);
         }
-        onCreated({
+        onCreated?.({
           id: intent.answer_key_id,
           name: name.trim(),
           page_count: pairs.length,
           first_page_thumbnail_url: placeholderThumb,
           created_at: new Date().toISOString(),
+          usage: { used_count: 0, last_used_at: null },
         });
+        onSuccess?.();
         return;
       }
       unfinished = failed;

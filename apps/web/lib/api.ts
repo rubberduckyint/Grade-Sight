@@ -9,11 +9,14 @@ export type {
   AnswerKeyDetail,
   AssessmentDetail,
   AssessmentListItem,
+  AssessmentListResponse,
   AssessmentStatus,
   AssessmentUploadIntent,
   DiagnosticReview,
   EntitlementResponse,
   ErrorPattern,
+  HeadlineInputs,
+  HeadlineProblem,
   PriceInfo,
   PricesResponse,
   Student,
@@ -25,7 +28,7 @@ import type {
   AnswerKey,
   AnswerKeyDetail,
   AssessmentDetail,
-  AssessmentListItem,
+  AssessmentListResponse,
   EntitlementResponse,
   ErrorPattern,
   PricesResponse,
@@ -129,13 +132,24 @@ export async function fetchStudents(): Promise<Student[]> {
 
 // ---- Assessments ----
 
-export async function fetchAssessments(opts?: { limit?: number }): Promise<AssessmentListItem[]> {
-  const limit = opts?.limit ?? 20;
-  const response = await authedFetch(`/api/assessments?limit=${limit}`, { method: "GET" });
-  if (response.status === 401) return [];
+export async function fetchAssessments(opts?: {
+  limit?: number;
+  since?: string; // ISO date "YYYY-MM-DD"
+  until?: string;
+  cursor?: string; // ISO datetime
+}): Promise<AssessmentListResponse> {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  if (opts?.since) params.set("since", opts.since);
+  if (opts?.until) params.set("until", opts.until);
+  if (opts?.cursor) params.set("cursor", opts.cursor);
+  const qs = params.toString();
+  const url = `/api/assessments${qs ? `?${qs}` : ""}`;
+  const response = await authedFetch(url, { method: "GET" });
+  if (response.status === 401)
+    return { assessments: [], has_more: false, next_cursor: null };
   if (!response.ok) throw new Error(`GET /api/assessments failed: ${response.status}`);
-  const body = (await response.json()) as { assessments: AssessmentListItem[] };
-  return body.assessments;
+  return (await response.json()) as AssessmentListResponse;
 }
 
 export async function fetchAssessmentDetail(id: string): Promise<AssessmentDetail | null> {

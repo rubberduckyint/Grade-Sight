@@ -43,6 +43,8 @@ export function AppHeader({
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "border-b-2 pb-3.5 text-base transition-colors",
+                      "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent",
+                      "focus-visible:rounded-[var(--radius-sm)]",
                       active
                         ? "border-ink font-medium text-ink"
                         : "border-transparent font-normal text-ink-soft hover:text-ink",

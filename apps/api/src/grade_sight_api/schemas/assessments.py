@@ -36,6 +36,19 @@ class AssessmentCreateResponse(BaseModel):
     pages: list[AssessmentPageUploadIntent]
 
 
+class HeadlineProblem(BaseModel):
+    problem_number: int
+    is_correct: bool
+    error_pattern_slug: str | None = None
+    error_pattern_name: str | None = None
+
+
+class HeadlineInputs(BaseModel):
+    total_problems_seen: int | None = None
+    overall_summary: str | None = None
+    problems: list[HeadlineProblem]
+
+
 class AssessmentListItem(BaseModel):
     id: UUID
     student_id: UUID
@@ -44,10 +57,14 @@ class AssessmentListItem(BaseModel):
     first_page_thumbnail_url: str
     status: AssessmentStatus
     uploaded_at: datetime
+    has_key: bool
+    headline_inputs: HeadlineInputs | None
 
 
 class AssessmentListResponse(BaseModel):
     assessments: list[AssessmentListItem]
+    has_more: bool
+    next_cursor: datetime | None
 
 
 class AssessmentDetailPage(BaseModel):
