@@ -132,3 +132,69 @@ export async function loadAssessments(opts?: {
   if (!response.ok) throw new Error(`GET /api/assessments failed: ${response.status}`);
   return (await response.json()) as AssessmentListResponse;
 }
+
+// ---- Classes ----
+
+export async function createClass(payload: {
+  name: string;
+  subject?: string | null;
+  grade_level?: string | null;
+}): Promise<{ id: string }> {
+  const response = await callApi("/api/classes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(`POST /api/classes failed: ${response.status}`);
+  }
+  return (await response.json()) as { id: string };
+}
+
+export async function updateClass(
+  id: string,
+  payload: {
+    name?: string;
+    subject?: string | null;
+    grade_level?: string | null;
+    archived?: boolean;
+  },
+): Promise<void> {
+  const response = await callApi(`/api/classes/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(`PATCH /api/classes/${id} failed: ${response.status}`);
+  }
+}
+
+export async function addStudentsToClass(
+  class_id: string,
+  student_ids: string[],
+): Promise<void> {
+  const response = await callApi(`/api/classes/${class_id}/members`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ student_ids }),
+  });
+  if (!response.ok) {
+    throw new Error(`POST /api/classes/${class_id}/members failed: ${response.status}`);
+  }
+}
+
+export async function removeStudentFromClass(
+  class_id: string,
+  student_id: string,
+): Promise<void> {
+  const response = await callApi(
+    `/api/classes/${class_id}/members/${student_id}`,
+    { method: "DELETE" },
+  );
+  if (!response.ok && response.status !== 404) {
+    throw new Error(
+      `DELETE /api/classes/${class_id}/members/${student_id} failed: ${response.status}`,
+    );
+  }
+}

@@ -12,6 +12,8 @@ export type {
   AssessmentListResponse,
   AssessmentStatus,
   AssessmentUploadIntent,
+  ClassDetail,
+  ClassListResponse,
   DiagnosticReview,
   EntitlementResponse,
   ErrorPattern,
@@ -29,6 +31,8 @@ import type {
   AnswerKeyDetail,
   AssessmentDetail,
   AssessmentListResponse,
+  ClassDetail,
+  ClassListResponse,
   EntitlementResponse,
   ErrorPattern,
   PricesResponse,
@@ -206,4 +210,28 @@ export async function fetchStudentBiography(
     throw new Error(`GET /api/students/${id}/biography failed: ${response.status}`);
   }
   return (await response.json()) as StudentBiography;
+}
+
+// ---- Classes ----
+
+export async function fetchClasses(opts?: {
+  includeArchived?: boolean;
+}): Promise<ClassListResponse> {
+  const params = new URLSearchParams();
+  if (opts?.includeArchived) params.set("include_archived", "true");
+  const qs = params.toString();
+  const url = `/api/classes${qs ? `?${qs}` : ""}`;
+  const response = await authedFetch(url, { method: "GET" });
+  if (response.status === 401 || response.status === 404) {
+    return { classes: [], has_archived: false };
+  }
+  if (!response.ok) throw new Error(`GET /api/classes failed: ${response.status}`);
+  return (await response.json()) as ClassListResponse;
+}
+
+export async function fetchClassDetail(id: string): Promise<ClassDetail | null> {
+  const response = await authedFetch(`/api/classes/${id}`, { method: "GET" });
+  if (response.status === 401 || response.status === 404) return null;
+  if (!response.ok) throw new Error(`GET /api/classes/${id} failed: ${response.status}`);
+  return (await response.json()) as ClassDetail;
 }
