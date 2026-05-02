@@ -19,7 +19,7 @@ export function AddKeyCard() {
       <AddKeyDialog
         open={open}
         onOpenChange={setOpen}
-        onCreated={() => router.refresh()}
+        onAfterCreate={() => router.refresh()}
       />
     </>
   );

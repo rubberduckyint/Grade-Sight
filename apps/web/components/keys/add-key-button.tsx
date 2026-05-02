@@ -13,7 +13,7 @@ export function AddKeyButton() {
       <AddKeyDialog
         open={open}
         onOpenChange={setOpen}
-        onCreated={() => router.refresh()}
+        onAfterCreate={() => router.refresh()}
       />
     </>
   );

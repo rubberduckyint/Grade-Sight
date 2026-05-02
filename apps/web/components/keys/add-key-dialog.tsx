@@ -5,11 +5,11 @@ import { AnswerKeyUploadForm } from "@/components/answer-key-upload-form";
 export function AddKeyDialog({
   open,
   onOpenChange,
-  onCreated,
+  onAfterCreate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: () => void;
+  onAfterCreate: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -20,7 +20,7 @@ export function AddKeyDialog({
         <AnswerKeyUploadForm
           onSuccess={() => {
             onOpenChange(false);
-            onCreated();
+            onAfterCreate();
           }}
         />
       </DialogContent>
