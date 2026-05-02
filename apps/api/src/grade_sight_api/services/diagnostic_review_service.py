@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Mapping, Protocol
 from uuid import UUID
 
 from grade_sight_api.schemas.assessments import ProblemObservationResponse
@@ -34,7 +34,7 @@ class _PatternRow(Protocol):
 class OverlayInputs:
     problems: list[ProblemObservationResponse]
     reviews: list[_ReviewRow]
-    pattern_index: dict[UUID, _PatternRow]
+    pattern_index: Mapping[UUID, _PatternRow]
 
 
 def apply_reviews_to_problems(inputs: OverlayInputs) -> list[ProblemObservationResponse]:
@@ -67,7 +67,7 @@ def apply_reviews_to_problems(inputs: OverlayInputs) -> list[ProblemObservationR
 
 
 def _build_review_out(
-    review: _ReviewRow, pattern_index: dict[UUID, _PatternRow]
+    review: _ReviewRow, pattern_index: Mapping[UUID, _PatternRow]
 ) -> DiagnosticReviewOut:
     override_pattern = (
         pattern_index.get(review.override_pattern_id)

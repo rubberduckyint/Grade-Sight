@@ -63,6 +63,26 @@ MAX_PAGES_PER_ASSESSMENT = 20
 router = APIRouter()
 
 
+class _PatternAdapter:
+    """Satisfy the _PatternRow protocol with category info resolved via JOIN.
+
+    Used by both the list endpoint (pattern_index for override reviews) and the
+    detail endpoint (same). Defined at module scope so both sites can share it.
+    """
+
+    def __init__(
+        self,
+        pattern: ErrorPattern,
+        cat_slug: str | None,
+        cat_name: str | None,
+    ) -> None:
+        self.id = pattern.id
+        self.slug = pattern.slug
+        self.name = pattern.name
+        self.category_slug = cat_slug or ""
+        self.category_name = cat_name or ""
+
+
 def _safe_extension(filename: str) -> str:
     """Lowercase file extension without the dot, defaulting to 'bin'."""
     suffix = Path(filename).suffix.lstrip(".").lower()
@@ -212,6 +232,11 @@ async def list_assessments(
         )
     )
 
+    # Plan specified tzinfo=timezone.utc in these combines, but Assessment.uploaded_at
+    # is a tz-naive TIMESTAMP column. Mixing tz-aware and tz-naive datetimes in a
+    # SQLAlchemy comparison raises a TypeError at runtime. Keep naive datetimes here
+    # until the column migrates to TIMESTAMP WITH TIME ZONE.
+    # TODO: add tzinfo=timezone.utc once uploaded_at column is tz-aware.
     if since is not None:
         stmt = stmt.where(
             Assessment.uploaded_at >= datetime.combine(since, datetime.min.time())
@@ -237,7 +262,7 @@ async def list_assessments(
     # Maps assessment_id -> list of (ProblemObservation, pattern_slug, pattern_name, category_slug)
     obs_by_aid: dict[UUID, list[tuple[ProblemObservation, str | None, str | None, str | None]]] = {}
     reviews_by_aid: dict[UUID, list[DiagnosticReview]] = {}
-    pattern_index: dict[UUID, ErrorPattern] = {}
+    pattern_index: dict[UUID, _PatternAdapter] = {}
 
     if assessment_ids:
         # 1. Diagnoses (keyed by assessment_id)
@@ -305,7 +330,9 @@ async def list_assessments(
         ).scalars():
             reviews_by_aid.setdefault(r.assessment_id, []).append(r)
 
-        # 4. Pattern index for override patterns referenced by reviews
+        # 4. Pattern index for override patterns referenced by reviews.
+        # JOIN through ErrorSubcategory → ErrorCategory so _PatternAdapter can
+        # satisfy the _PatternRow protocol (category_slug / category_name required).
         override_ids = {
             r.override_pattern_id
             for rs in reviews_by_aid.values()
@@ -313,12 +340,26 @@ async def list_assessments(
             if r.override_pattern_id is not None
         }
         if override_ids:
-            for p in (
-                await db.execute(
-                    select(ErrorPattern).where(ErrorPattern.id.in_(override_ids))
+            pattern_stmt = (
+                select(
+                    ErrorPattern,
+                    ErrorCategory.slug.label("cat_slug"),
+                    ErrorCategory.name.label("cat_name"),
                 )
-            ).scalars():
-                pattern_index[p.id] = p
+                .join(
+                    ErrorSubcategory,
+                    ErrorPattern.subcategory_id == ErrorSubcategory.id,
+                    isouter=True,
+                )
+                .join(
+                    ErrorCategory,
+                    ErrorSubcategory.category_id == ErrorCategory.id,
+                    isouter=True,
+                )
+                .where(ErrorPattern.id.in_(override_ids))
+            )
+            for pat, cat_slug, cat_name in (await db.execute(pattern_stmt)).all():
+                pattern_index[pat.id] = _PatternAdapter(pat, cat_slug, cat_name)
 
     # Adapter to satisfy _ReviewRow protocol without fetching User rows (list endpoint).
     class _ListReviewAdapter:
@@ -360,7 +401,7 @@ async def list_assessments(
             OverlayInputs(
                 problems=raw_problems,
                 reviews=adapters,  # type: ignore[arg-type]
-                pattern_index=pattern_index,  # type: ignore[arg-type]
+                pattern_index=pattern_index,
             )
         )
 
@@ -658,7 +699,8 @@ async def get_assessment_detail(
 
         # Build pattern_index: UUID -> protocol-compatible object with
         # category_slug + category_name resolved via JOIN.
-        pattern_index: dict[object, object] = {}
+        # Uses the module-level _PatternAdapter (shared with the list endpoint).
+        pattern_index: dict[UUID, _PatternAdapter] = {}
         if pattern_ids:
             pat_result = await db.execute(
                 select(
@@ -678,19 +720,6 @@ async def get_assessment_detail(
                 )
                 .where(ErrorPattern.id.in_(pattern_ids))
             )
-
-            class _PatternAdapter:
-                def __init__(
-                    self,
-                    pattern: ErrorPattern,
-                    cat_slug: str | None,
-                    cat_name: str | None,
-                ) -> None:
-                    self.id = pattern.id
-                    self.slug = pattern.slug
-                    self.name = pattern.name
-                    self.category_slug = cat_slug or ""
-                    self.category_name = cat_name or ""
 
             for pat, cat_slug, cat_name in pat_result.all():
                 pattern_index[pat.id] = _PatternAdapter(pat, cat_slug, cat_name)
@@ -734,7 +763,7 @@ async def get_assessment_detail(
             OverlayInputs(
                 problems=diagnosis_payload.problems,
                 reviews=adapters,  # type: ignore[arg-type]
-                pattern_index=pattern_index,  # type: ignore[arg-type]
+                pattern_index=pattern_index,
             )
         )
         diagnosis_payload = diagnosis_payload.model_copy(

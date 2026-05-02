@@ -31,6 +31,7 @@ from grade_sight_api.models.assessment_diagnosis import AssessmentDiagnosis
 from grade_sight_api.models.assessment_page import AssessmentPage
 from grade_sight_api.models.audit_log import AuditLog
 from grade_sight_api.models.diagnostic_review import DiagnosticReview
+from grade_sight_api.models.error_pattern import ErrorPattern
 from grade_sight_api.models.organization import Organization
 from grade_sight_api.models.problem_observation import ProblemObservation
 from grade_sight_api.models.student import Student
@@ -1108,6 +1109,78 @@ async def test_list_assessments_headline_inputs_reflects_review_overlay(
     assert hi is not None
     assert len(hi["problems"]) == 1
     assert hi["problems"][0]["is_correct"] is True  # overlay applied
+
+
+async def test_list_assessments_headline_inputs_reflects_pattern_override(
+    async_session: AsyncSession, seed_minimal_taxonomy: dict[str, Any]
+) -> None:
+    """Override-pattern review updates error_pattern_slug/name but not is_correct."""
+    user = await _seed_user(async_session)
+
+    # Pattern A is what the engine originally tagged; Pattern B is the override.
+    pattern_a = seed_minimal_taxonomy["pattern"]
+    subcategory = seed_minimal_taxonomy["subcategory"]
+
+    pattern_b = ErrorPattern(
+        slug="fraction-invert-error",
+        subcategory_id=subcategory.id,
+        name="Fraction invert error",
+        description="Inverted numerator/denominator when dividing fractions.",
+        canonical_example="1/2 ÷ 3/4 → 1/2 × 3/4 (incorrect)",
+        severity_hint="medium",
+    )
+    async_session.add(pattern_b)
+    await async_session.flush()
+
+    _, a = await _seed_completed_assessment(
+        async_session,
+        user,
+        problems=[
+            {
+                "problem_number": 1,
+                "is_correct": False,
+                "pattern_id": pattern_a.id,
+            },
+        ],
+        overall_summary="1 wrong.",
+    )
+
+    review = DiagnosticReview(
+        assessment_id=a.id,
+        problem_number=1,
+        marked_correct=False,
+        override_pattern_id=pattern_b.id,
+        reviewed_by=user.id,
+        reviewed_at=datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+    async_session.add(review)
+    await async_session.flush()
+
+    _override_deps(user, async_session)
+    fake_url = "https://r2.example/get?sig=pat-ov"
+    try:
+        with _patch_r2_client(fake_url):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://t"
+            ) as client:
+                r = await client.get(
+                    "/api/assessments",
+                    headers={"Authorization": "Bearer fake"},
+                )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["assessments"]) == 1
+    hi = body["assessments"][0]["headline_inputs"]
+    assert hi is not None
+    assert len(hi["problems"]) == 1
+    p = hi["problems"][0]
+    # Override swaps the pattern but does NOT flip correctness.
+    assert p["error_pattern_slug"] == pattern_b.slug
+    assert p["error_pattern_name"] == pattern_b.name
+    assert p["is_correct"] is False
 
 
 async def _seed_assessment_at(
