@@ -179,6 +179,20 @@ async def get_current_user(
             detail="unauthenticated",
         )
 
+    # Pre-check: if a soft-deleted user already exists for this clerk_id, refuse
+    # the request rather than re-creating downstream resources.
+    deleted_check = await db.execute(
+        select(User.id).where(
+            User.clerk_id == clerk_user_id,
+            User.deleted_at.is_not(None),
+        ).limit(1)
+    )
+    if deleted_check.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account has been deleted.",
+        )
+
     result = await db.execute(
         select(User).where(
             User.clerk_id == clerk_user_id,

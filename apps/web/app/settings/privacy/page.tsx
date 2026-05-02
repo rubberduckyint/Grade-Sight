@@ -1,18 +1,19 @@
-import { SectionEyebrow } from "@/components/section-eyebrow";
-import { SerifHeadline } from "@/components/serif-headline";
+import { redirect } from "next/navigation";
 
-export default function PrivacyPage() {
+import { fetchMe } from "@/lib/api";
+import { PrivacyHeader } from "@/components/privacy/privacy-header";
+import { WhatWeKeepBlock } from "@/components/privacy/what-we-keep-block";
+import { DeleteAccountSection } from "@/components/privacy/delete-account-section";
+
+export default async function PrivacyPage() {
+  const user = await fetchMe();
+  if (!user) redirect("/sign-in");
+
   return (
     <>
-      <SectionEyebrow>Settings · Privacy</SectionEyebrow>
-      <div className="mt-3 mb-6">
-        <SerifHeadline level="page" as="h1">
-          Privacy
-        </SerifHeadline>
-      </div>
-      <p className="text-base text-ink-soft">
-        Coming soon — this lands in Step 13.
-      </p>
+      <PrivacyHeader />
+      <WhatWeKeepBlock />
+      <DeleteAccountSection email={user.email} />
     </>
   );
 }

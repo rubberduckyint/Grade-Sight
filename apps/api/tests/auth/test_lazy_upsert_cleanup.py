@@ -107,7 +107,12 @@ async def test_cleanup_runs_when_user_insert_fails(
     patch_clerk_auth: None,
     patch_clerk_user_get: None,
 ) -> None:
-    """If the final users INSERT fails, both Clerk org and Stripe customer are cleaned up."""
+    """If the final users INSERT fails, both Clerk org and Stripe customer are cleaned up.
+
+    This test uses a brand-new clerk_id (no pre-existing row) and forces the
+    INSERT to fail by raising from within flush(), so the cleanup path runs
+    without triggering the soft-deleted-user 401 guard.
+    """
     fake_org = _fake_clerk_org("org_CLEANUP_BOTH")
     fake_customer = MagicMock()
     fake_customer.id = "cus_CLEANUP_BOTH"
@@ -115,28 +120,18 @@ async def test_cleanup_runs_when_user_insert_fails(
     async def fake_create_customer(*args: Any, **kwargs: Any) -> Any:
         return fake_customer
 
-    # Pre-insert a soft-deleted user with the SAME clerk_id so the existing-user
-    # query (filtered by deleted_at IS NULL) does not find it, but the final
-    # users INSERT in the create branch hits a unique-constraint violation on
-    # uq_users_clerk_id (the constraint is over all rows, not partial).
-    from grade_sight_api.models.organization import Organization
-    from grade_sight_api.models.user import User, UserRole
+    # Patch flush to raise on the second call (after the org INSERT) to
+    # simulate a users INSERT failure without needing a real DB constraint.
+    original_flush = async_session.flush
+    flush_call_count = 0
 
-    pre_org = Organization(name="Pre-existing")
-    async_session.add(pre_org)
-    await async_session.flush()
-    pre_user = User(
-        clerk_id="user_test123",
-        email="other@example.com",
-        role=UserRole.parent,
-        first_name="Other",
-        last_name="User",
-        organization_id=pre_org.id,
-    )
-    async_session.add(pre_user)
-    await async_session.flush()
-    pre_user.deleted_at = datetime.utcnow()  # column is TIMESTAMP WITHOUT TIME ZONE
-    await async_session.flush()
+    async def failing_flush(*args: Any, **kwargs: Any) -> None:
+        nonlocal flush_call_count
+        flush_call_count += 1
+        # First flush: org row. Second flush: user row — raise here.
+        if flush_call_count >= 2:
+            raise RuntimeError("simulated INSERT failure")
+        return await original_flush(*args, **kwargs)
 
     with (
         patch.object(
@@ -159,7 +154,8 @@ async def test_cleanup_runs_when_user_insert_fails(
             "delete_async",
             new=AsyncMock(return_value=None),
         ) as stripe_delete,
-        pytest.raises(Exception),  # noqa: B017 — IntegrityError or wrapped
+        patch.object(async_session, "flush", side_effect=failing_flush),
+        pytest.raises(RuntimeError, match="simulated INSERT failure"),
     ):
         await get_current_user(
             request=_fake_request_with_token(), db=async_session
