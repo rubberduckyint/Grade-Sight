@@ -106,6 +106,13 @@ export async function deleteAnswerKey(id: string): Promise<void> {
   }
 }
 
+export async function deleteSelf(): Promise<void> {
+  const response = await callApi("/api/me/delete", { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`POST /api/me/delete failed: ${response.status}`);
+  }
+}
+
 export async function loadAssessments(opts?: {
   limit?: number;
   since?: string;
