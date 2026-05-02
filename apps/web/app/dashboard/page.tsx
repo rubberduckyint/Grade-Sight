@@ -94,7 +94,6 @@ export default async function DashboardPage() {
 
   return (
     <AppShell
-      orgName={user.organization?.name}
       userId={user.id}
       organizationId={user.organization?.id ?? null}
       tabs={tabs}

@@ -7,13 +7,11 @@ import { cn } from "@/lib/utils";
 export type AppHeaderTab = { label: string; href: string };
 
 export function AppHeader({
-  orgName,
   tabs,
   activeHref,
   uploadHref,
   uploadLabel = "Upload assessment",
 }: {
-  orgName?: string | null;
   tabs?: AppHeaderTab[];
   activeHref?: string;
   uploadHref?: string;
@@ -58,7 +56,6 @@ export function AppHeader({
           )}
         </div>
         <div className="flex items-center gap-4">
-          {orgName && <span className="text-sm text-ink-soft">{orgName}</span>}
           {uploadHref && (
             <Button asChild>
               <Link href={uploadHref}>{uploadLabel}</Link>

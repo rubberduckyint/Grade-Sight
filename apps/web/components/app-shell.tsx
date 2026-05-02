@@ -4,7 +4,6 @@ import { SentryUserSync } from "./sentry-user-sync";
 
 export function AppShell({
   children,
-  orgName,
   userId,
   organizationId,
   tabs,
@@ -13,7 +12,6 @@ export function AppShell({
   uploadLabel,
 }: {
   children: ReactNode;
-  orgName?: string | null;
   userId: string;
   organizationId: string | null;
   tabs?: AppHeaderTab[];
@@ -31,7 +29,6 @@ export function AppShell({
       </a>
       <SentryUserSync userId={userId} organizationId={organizationId} />
       <AppHeader
-        orgName={orgName}
         tabs={tabs}
         activeHref={activeHref}
         uploadHref={uploadHref}

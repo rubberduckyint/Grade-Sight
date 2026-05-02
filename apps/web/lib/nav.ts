@@ -8,6 +8,7 @@ export const PARENT_TABS: AppHeaderTab[] = [
 export const TEACHER_TABS: AppHeaderTab[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Students", href: "/students" },
+  { label: "Classes", href: "/classes" },
   { label: "Assessments", href: "/assessments" },
   { label: "Keys", href: "/keys" },
 ];

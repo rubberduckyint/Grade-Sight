@@ -15,7 +15,6 @@ export default async function KeysPage() {
 
   return (
     <AppShell
-      orgName={user.organization?.name}
       userId={user.id}
       organizationId={user.organization?.id ?? null}
       tabs={TEACHER_TABS}

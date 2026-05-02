@@ -252,3 +252,38 @@ export interface StudentBiography {
   recent_assessments: RecentAssessmentRow[];
   sentence: BiographySentence;
 }
+
+// ---- Classes ----
+
+export interface Klass {
+  id: string;
+  name: string;
+  subject: string | null;
+  grade_level: string | null;
+  archived: boolean;
+  student_count: number;
+  created_at: string;
+}
+
+export interface ClassListResponse {
+  classes: Klass[];
+  has_archived: boolean;
+}
+
+export interface ClassRosterMember {
+  id: string;
+  student_id: string;
+  student_name: string;
+  student_grade_level: string | null;
+  joined_at: string;
+}
+
+export interface ClassDetail {
+  id: string;
+  name: string;
+  subject: string | null;
+  grade_level: string | null;
+  archived: boolean;
+  roster: ClassRosterMember[];
+  created_at: string;
+}
