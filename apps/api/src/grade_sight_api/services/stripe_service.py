@@ -7,6 +7,7 @@ audit_log entry for user-visible state changes. Raw API call tracking
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 from uuid import UUID
@@ -177,3 +178,15 @@ async def _get_subscription(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def cancel_at_period_end(stripe_subscription_id: str) -> None:
+    """Tell Stripe to cancel this subscription at the end of the current period.
+
+    Idempotent: calling twice has the same effect as calling once.
+    """
+    await asyncio.to_thread(
+        stripe.Subscription.modify,
+        stripe_subscription_id,
+        cancel_at_period_end=True,
+    )
