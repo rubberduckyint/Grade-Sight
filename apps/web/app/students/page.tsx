@@ -18,7 +18,6 @@ export default async function StudentsPage() {
 
   return (
     <AppShell
-      orgName={user.organization?.name}
       userId={user.id}
       organizationId={user.organization?.id ?? null}
       tabs={tabs}

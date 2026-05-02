@@ -36,7 +36,6 @@ export default async function AssessmentsPage({ searchParams }: PageProps) {
 
   return (
     <AppShell
-      orgName={user.organization?.name}
       userId={user.id}
       organizationId={user.organization?.id ?? null}
       tabs={TEACHER_TABS}

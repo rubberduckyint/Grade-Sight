@@ -27,7 +27,6 @@ export default async function ClassDetailPage({ params }: PageProps) {
 
   return (
     <AppShell
-      orgName={user.organization?.name}
       userId={user.id}
       organizationId={user.organization?.id ?? null}
       tabs={TEACHER_TABS}

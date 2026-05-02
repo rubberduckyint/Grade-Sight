@@ -32,7 +32,6 @@ export default async function AssessmentViewerPage({ params }: PageProps) {
 
   return (
     <AppShell
-      orgName={user.organization?.name}
       userId={user.id}
       organizationId={user.organization?.id ?? null}
     >
