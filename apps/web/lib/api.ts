@@ -28,7 +28,6 @@ import type {
   AnswerKey,
   AnswerKeyDetail,
   AssessmentDetail,
-  AssessmentListItem,
   AssessmentListResponse,
   EntitlementResponse,
   ErrorPattern,
